@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WEALTH — Tableau de bord patrimonial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,200;0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f5f7;
+  --bg2: #ffffff;
+  --bg3: #e8e8ed;
+  --text: #1d1d1f;
+  --text2: #6e6e73;
+  --text3: #aeaeb2;
+  --accent: #0071e3;
+  --accent2: #34c759;
+  --red: #ff3b30;
+  --amber: #ff9f0a;
+  --border: rgba(0,0,0,0.08);
+  --radius: 18px;
+  --radius-sm: 10px;
+  --shadow: 0 4px 40px rgba(0,0,0,0.08);
+  --shadow-hover: 0 8px 60px rgba(0,0,0,0.14);
+  --font: 'DM Sans', sans-serif;
+  --font-serif: 'DM Serif Display', serif;
+  --nav-h: 56px;
+}
+[data-theme="dark"] {
+  --bg: #000000;
+  --bg2: #1c1c1e;
+  --bg3: #2c2c2e;
+  --text: #f5f5f7;
+  --text2: #aeaeb2;
+  --text3: #636366;
+  --border: rgba(255,255,255,0.1);
+  --shadow: 0 4px 40px rgba(0,0,0,0.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:rgba(245,245,247,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 28px;transition:background .3s}
+[data-theme="dark"] nav{background:rgba(0,0,0,0.85)}
+.nav-logo{font-family:var(--font-serif);font-size:20px;letter-spacing:-0.5px;color:var(--text)}
+.nav-links{display:flex;gap:2px}
+.nav-link{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:400;cursor:pointer;border:none;background:none;color:var(--text2);transition:all .2s}
+.nav-link:hover,.nav-link.active{background:var(--bg3);color:var(--text)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.theme-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:transform .2s}
+.theme-btn:hover{transform:scale(1.1)}
+
+/* PAGES */
+.page{display:none;min-height:100vh;padding-top:calc(var(--nav-h) + 32px);padding-bottom:80px;animation:fadeUp .4s ease}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+.container{max-width:1100px;margin:0 auto;padding:0 28px}
+
+/* HERO */
+.hero{padding:60px 28px 48px;max-width:1100px;margin:0 auto}
+.hero-eyebrow{font-size:12px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.hero-title{font-family:var(--font-serif);font-size:clamp(42px,6vw,72px);line-height:1.05;letter-spacing:-1px;margin-bottom:16px}
+.hero-title em{font-style:italic;color:var(--text2)}
+.hero-sub{font-size:17px;color:var(--text2);max-width:480px;line-height:1.6;margin-bottom:40px}
+
+/* METRIC GRID */
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:32px}
+.metric-card{background:var(--bg2);border-radius:var(--radius);padding:24px;border:1px solid var(--border);transition:transform .2s,box-shadow .2s;cursor:default}
+.metric-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover)}
+.metric-label{font-size:12px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;color:var(--text2);margin-bottom:10px}
+.metric-value{font-size:28px;font-weight:300;letter-spacing:-1px;line-height:1}
+.metric-delta{font-size:13px;margin-top:8px;display:flex;align-items:center;gap:4px}
+.delta-up{color:var(--accent2)}
+.delta-down{color:var(--red)}
+
+/* CARDS */
+.card{background:var(--bg2);border-radius:var(--radius);padding:28px;border:1px solid var(--border);margin-bottom:20px}
+.card-title{font-size:15px;font-weight:500;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;padding:10px 12px;font-size:11px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border)}
+td{padding:12px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg3)}
+.tr-transition{transition:background .15s}
+
+/* BADGE */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;letter-spacing:.3px}
+.badge-blue{background:#e3f0fd;color:#0051a3}
+.badge-green{background:#d4f1e1;color:#1a7a3e}
+.badge-amber{background:#fef3e2;color:#9a5c00}
+.badge-red{background:#fde8e7;color:#a32b25}
+.badge-gray{background:var(--bg3);color:var(--text2)}
+[data-theme="dark"] .badge-blue{background:#0c3460;color:#5aacff}
+[data-theme="dark"] .badge-green{background:#0a3d20;color:#30d158}
+[data-theme="dark"] .badge-amber{background:#3d2800;color:#ffd60a}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+input,select{font-family:var(--font);font-size:14px;padding:10px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text);outline:none;transition:border .2s,box-shadow .2s;width:100%}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,113,227,.12)}
+.btn{font-family:var(--font);font-size:14px;font-weight:500;padding:10px 22px;border-radius:var(--radius-sm);border:none;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#0062c4;transform:translateY(-1px)}
+.btn-sm{font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;transition:all .15s}
+.btn-sm:hover{background:var(--bg3);color:var(--text)}
+.btn-danger{border-color:var(--red);color:var(--red)}
+
+/* PROGRESS */
+.progress{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .6s ease}
+
+/* SPARKLINE placeholder */
+.sparkline{height:40px;display:flex;align-items:flex-end;gap:2px}
+.spark-bar{flex:1;border-radius:2px;background:var(--accent);opacity:.6;transition:opacity .2s}
+.spark-bar:hover{opacity:1}
+
+/* QUOTE PAGE */
+.quote-hero{min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 28px;position:relative}
+.quote-date{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:32px}
+.quote-text{font-family:var(--font-serif);font-size:clamp(24px,4vw,42px);line-height:1.2;max-width:760px;margin-bottom:28px;letter-spacing:-0.5px}
+.quote-text::before{content:'\201C';color:var(--accent);font-size:1.2em}
+.quote-text::after{content:'\201D';color:var(--accent);font-size:1.2em}
+.quote-author{font-size:15px;font-weight:500;color:var(--text2)}
+.quote-role{font-size:13px;color:var(--text3);margin-top:4px}
+.quote-nav{display:flex;gap:12px;margin-top:40px}
+.quote-dot{width:8px;height:8px;border-radius:50%;background:var(--bg3);cursor:pointer;transition:background .2s}
+.quote-dot.active{background:var(--accent)}
+
+/* PRINCIPLE CARDS */
+.principles{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:40px}
+.principle{background:var(--bg2);border-radius:var(--radius);padding:28px;border:1px solid var(--border);transition:transform .2s}
+.principle:hover{transform:translateY(-4px)}
+.principle-num{font-family:var(--font-serif);font-size:40px;color:var(--bg3);line-height:1;margin-bottom:12px}
+.principle-title{font-size:16px;font-weight:500;margin-bottom:8px}
+.principle-text{font-size:14px;color:var(--text2);line-height:1.6}
+
+/* CATALOG */
+.search-bar{display:flex;gap:12px;margin-bottom:24px}
+.search-input{flex:1;font-size:15px;padding:12px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg2);color:var(--text)}
+.filter-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+.pill{padding:6px 16px;border-radius:20px;font-size:13px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text2);transition:all .2s}
+.pill.active,.pill:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.catalog-item{background:var(--bg2);border-radius:var(--radius);padding:22px;border:1px solid var(--border);cursor:pointer;transition:all .2s}
+.catalog-item:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover);border-color:var(--accent)}
+.catalog-ticker{font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.catalog-name{font-size:15px;font-weight:500;margin-bottom:6px}
+.catalog-desc{font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:14px}
+.catalog-footer{display:flex;align-items:center;justify-content:space-between}
+.catalog-price{font-size:18px;font-weight:300;letter-spacing:-0.5px}
+.catalog-change{font-size:13px;font-weight:500}
+
+/* ALLOC CHART */
+.donut-wrap{display:flex;align-items:center;gap:32px;flex-wrap:wrap}
+.donut-legend{display:flex;flex-direction:column;gap:12px}
+.legend-item{display:flex;align-items:center;gap:10px;font-size:14px}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* ROADMAP */
+.timeline{position:relative;padding-left:32px}
+.timeline::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:var(--bg3)}
+.tl-item{position:relative;margin-bottom:32px}
+.tl-item::before{content:'';position:absolute;left:-28px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--bg3);border:2px solid var(--bg2);z-index:1}
+.tl-item.done::before{background:var(--accent2)}
+.tl-item.active::before{background:var(--accent);box-shadow:0 0 0 4px rgba(0,113,227,.2)}
+.tl-year{font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.tl-title{font-size:15px;font-weight:500;margin-bottom:4px}
+.tl-desc{font-size:13px;color:var(--text2);line-height:1.6}
+
+/* SIMULATOR */
+.sim-output{background:linear-gradient(135deg,#0071e3 0%,#00c7be 100%);border-radius:var(--radius);padding:32px;color:#fff;margin-top:20px;text-align:center}
+.sim-result-num{font-family:var(--font-serif);font-size:clamp(36px,6vw,64px);letter-spacing:-2px;line-height:1}
+.sim-result-label{font-size:14px;opacity:.8;margin-top:8px}
+.sim-breakdown{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:rgba(255,255,255,.2);border-radius:var(--radius-sm);margin-top:24px;overflow:hidden}
+.sim-cell{background:rgba(255,255,255,.08);padding:16px;text-align:center}
+.sim-cell-val{font-size:18px;font-weight:500;letter-spacing:-0.5px}
+.sim-cell-lbl{font-size:11px;opacity:.7;margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+
+/* PRICE PULSE */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);display:inline-block;animation:pulse 2s infinite}
+
+/* CRYPTO PRICES */
+.price-up{color:var(--accent2)}
+.price-down{color:var(--red)}
+.price-neutral{color:var(--text2)}
+
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.section-title-lg{font-family:var(--font-serif);font-size:28px;letter-spacing:-0.5px}
+
+/* TAB INSIDE */
+.inner-tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--bg3);border-radius:var(--radius-sm);padding:4px;width:fit-content}
+.inner-tab{padding:7px 16px;border-radius:7px;font-size:13px;font-weight:400;cursor:pointer;border:none;background:none;color:var(--text2);transition:all .2s}
+.inner-tab.active{background:var(--bg2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+.empty-state{text-align:center;padding:48px;color:var(--text2)}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:.4}
+.empty-text{font-size:15px;margin-bottom:4px}
+.empty-sub{font-size:13px;color:var(--text3)}
+
+@media(max-width:640px){
+  .nav-links{display:none}
+  .metric-grid{grid-template-columns:repeat(2,1fr)}
+  .form-grid{grid-template-columns:1fr}
+  .sim-breakdown{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body data-theme="light">
+
+<nav>
+  <span class="nav-logo">W E A L T H</span>
+  <div class="nav-links">
+    <button class="nav-link active" onclick="showPage('dashboard',this)">Dashboard</button>
+    <button class="nav-link" onclick="showPage('portfolio',this)">Portfolio</button>
+    <button class="nav-link" onclick="showPage('catalog',this)">Catalogue</button>
+    <button class="nav-link" onclick="showPage('simulator',this)">Simulateur</button>
+    <button class="nav-link" onclick="showPage('roadmap',this)">Roadmap</button>
+    <button class="nav-link" onclick="showPage('mindset',this)">Mindset</button>
+  </div>
+  <div class="nav-right">
+    <span style="font-size:12px;color:var(--text3)" id="live-time"></span>
+    <span class="live-dot"></span>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">🌙</button>
+  </div>
+</nav>
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="hero">
+    <div class="hero-eyebrow">Tableau de bord</div>
+    <h1 class="hero-title">Ton patrimoine,<br><em>en temps réel.</em></h1>
+    <p class="hero-sub">Suis tes actifs, projette ta liberté financière, et reste focus sur l'objectif.</p>
+  </div>
+  <div class="container">
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Patrimoine net</div>
+        <div class="metric-value" id="d-total">0 €</div>
+        <div class="metric-delta"><span class="delta-up" id="d-total-pct">+0.00%</span> vs investi</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">PEA</div>
+        <div class="metric-value" id="d-pea">0 €</div>
+        <div class="metric-delta" id="d-pea-d" style="color:var(--text3)">0 positions</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Crypto</div>
+        <div class="metric-value" id="d-crypto">0 €</div>
+        <div class="metric-delta" id="d-crypto-d" style="color:var(--text3)">0 positions</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Immobilier</div>
+        <div class="metric-value" id="d-immo">0 €</div>
+        <div class="metric-delta" id="d-immo-d" style="color:var(--text3)">0 biens</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+      <div class="card">
+        <div class="card-title">Allocation <span style="font-size:12px;color:var(--text3)">actuelle</span></div>
+        <div class="donut-wrap">
+          <canvas id="donutChart" width="160" height="160" style="flex-shrink:0"></canvas>
+          <div class="donut-legend" id="donut-legend">
+            <div style="font-size:13px;color:var(--text3)">Ajoute des positions</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Projection 10 ans <span style="font-size:12px;color:var(--text3)">7%/an</span></div>
+        <canvas id="projCanvas" height="160"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        Quote du jour
+        <span style="font-size:12px;color:var(--text3)" id="dash-quote-author"></span>
+      </div>
+      <div style="font-family:var(--font-serif);font-size:18px;line-height:1.5;color:var(--text2)" id="dash-quote-text">Chargement...</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Toutes les positions <button class="btn-sm" onclick="showPage('portfolio',document.querySelectorAll('.nav-link')[1])">Gérer →</button></div>
+      <table id="all-table">
+        <thead><tr><th>Actif</th><th>Catégorie</th><th>Valeur</th><th>Investi</th><th>+/- value</th><th>Perf.</th></tr></thead>
+        <tbody id="all-tbody">
+          <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">Aucune position</div><div class="empty-sub">Ajoute tes actifs dans l'onglet Portfolio</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PORTFOLIO -->
+<div class="page" id="page-portfolio">
+  <div class="container" style="padding-top:20px">
+    <div class="section-header">
+      <div class="section-title-lg">Portfolio</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="exportData()">Exporter JSON</button>
+        <button class="btn-sm" onclick="document.getElementById('import-file').click()">Importer</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
+      </div>
+    </div>
+
+    <div class="inner-tabs">
+      <button class="inner-tab active" onclick="showInner('pea',this)">PEA</button>
+      <button class="inner-tab" onclick="showInner('cto',this)">CTO</button>
+      <button class="inner-tab" onclick="showInner('crypto',this)">Crypto</button>
+      <button class="inner-tab" onclick="showInner('immo',this)">Immobilier</button>
+      <button class="inner-tab" onclick="showInner('dca',this)">DCA Plan</button>
+    </div>
+
+    <!-- PEA -->
+    <div id="inner-pea">
+      <div class="card">
+        <div class="card-title">Ajouter une position PEA</div>
+        <div class="form-grid">
+          <div class="field"><label>Nom / ETF</label><input id="pea-n" placeholder="ex: CW8 MSCI World"></div>
+          <div class="field"><label>Investi (€)</label><input id="pea-i" type="number" placeholder="0"></div>
+          <div class="field"><label>Valeur actuelle (€)</label><input id="pea-c" type="number" placeholder="0"></div>
+          <div class="field" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" onclick="addPos('pea')">Ajouter</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>ETF</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Perf.</th><th></th></tr></thead>
+        <tbody id="pea-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- CTO -->
+    <div id="inner-cto" style="display:none">
+      <div class="card">
+        <div class="card-title">Ajouter une position CTO</div>
+        <div class="form-grid">
+          <div class="field"><label>Nom</label><input id="cto-n" placeholder="ex: SP500 ETF"></div>
+          <div class="field"><label>Investi (€)</label><input id="cto-i" type="number" placeholder="0"></div>
+          <div class="field"><label>Valeur actuelle (€)</label><input id="cto-c" type="number" placeholder="0"></div>
+          <div class="field" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" onclick="addPos('cto')">Ajouter</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>Actif</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Perf.</th><th></th></tr></thead>
+        <tbody id="cto-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- CRYPTO -->
+    <div id="inner-crypto" style="display:none">
+      <div class="card">
+        <div class="card-title">Ajouter une position Crypto</div>
+        <div class="form-grid">
+          <div class="field"><label>Token</label><input id="crypto-n" placeholder="ex: BTC, ETH, SOL"></div>
+          <div class="field"><label>Investi (€)</label><input id="crypto-i" type="number" placeholder="0"></div>
+          <div class="field"><label>Valeur actuelle (€)</label><input id="crypto-c" type="number" placeholder="0"></div>
+          <div class="field" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" onclick="addPos('crypto')">Ajouter</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">⚠️ Provision fiscale 30% <span id="crypto-tax-provision" style="color:var(--red);font-weight:500">0 €</span> à mettre de côté</div>
+        <table><thead><tr><th>Token</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Multiple</th><th></th></tr></thead>
+        <tbody id="crypto-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- IMMO -->
+    <div id="inner-immo" style="display:none">
+      <div class="card">
+        <div class="card-title">Ajouter un bien immobilier</div>
+        <div class="form-grid">
+          <div class="field"><label>Nom</label><input id="immo-n" placeholder="ex: Studio Toulon"></div>
+          <div class="field"><label>Prix achat (€)</label><input id="immo-p" type="number" placeholder="0"></div>
+          <div class="field"><label>Valeur estimée (€)</label><input id="immo-v" type="number" placeholder="0"></div>
+          <div class="field"><label>Loyer mensuel (€)</label><input id="immo-l" type="number" placeholder="0"></div>
+          <div class="field"><label>Mensualité crédit (€)</label><input id="immo-m" type="number" placeholder="0"></div>
+          <div class="field" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" onclick="addImmo()">Ajouter</button></div>
+        </div>
+      </div>
+      <div id="immo-cards-wrap">
+        <div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-text">Aucun bien</div><div class="empty-sub">Ajoute ton premier investissement immobilier</div></div>
+      </div>
+    </div>
+
+    <!-- DCA -->
+    <div id="inner-dca" style="display:none">
+      <div class="card">
+        <div class="card-title">Configurer un DCA mensuel</div>
+        <div class="form-grid">
+          <div class="field"><label>Catégorie</label>
+            <select id="dca-cat"><option value="PEA">PEA</option><option value="CTO">CTO</option><option value="Crypto">Crypto</option><option value="Livret A">Livret A</option></select>
+          </div>
+          <div class="field"><label>Actif</label><input id="dca-asset" placeholder="ex: CW8, BTC..."></div>
+          <div class="field"><label>Montant (€/mois)</label><input id="dca-amt" type="number" placeholder="0"></div>
+          <div class="field"><label>Jour du mois</label><input id="dca-day" type="number" min="1" max="28" value="1"></div>
+          <div class="field" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" onclick="addDCA()">Ajouter</button></div>
+        </div>
+      </div>
+      <div class="card" id="dca-card">
+        <div class="card-title">Plan DCA actuel</div>
+        <div id="dca-list"><div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">Aucun DCA configuré</div></div></div>
+        <div id="dca-total-wrap" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:14px;color:var(--text2)">Total investi / mois</span>
+          <span style="font-size:20px;font-weight:300" id="dca-total">0 €</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CATALOG -->
+<div class="page" id="page-catalog">
+  <div class="container" style="padding-top:20px">
+    <div class="section-header">
+      <div class="section-title-lg">Catalogue d'actifs</div>
+      <div class="live-dot" style="margin-right:4px"></div>
+    </div>
+    <div class="search-bar">
+      <input class="search-input" id="catalog-search" placeholder="Rechercher un ETF, action ou crypto..." oninput="filterCatalog()">
+    </div>
+    <div class="filter-pills" id="cat-filters">
+      <button class="pill active" onclick="filterCat('Tous',this)">Tous</button>
+      <button class="pill" onclick="filterCat('ETF',this)">ETF</button>
+      <button class="pill" onclick="filterCat('Crypto',this)">Crypto</button>
+      <button class="pill" onclick="filterCat('Action',this)">Actions</button>
+    </div>
+    <div class="catalog-grid" id="catalog-grid"></div>
+  </div>
+</div>
+
+<!-- SIMULATOR -->
+<div class="page" id="page-simulator">
+  <div class="container" style="padding-top:20px">
+    <div class="section-title-lg" style="margin-bottom:32px">Simulateur patrimonial</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="card">
+        <div class="card-title">Paramètres</div>
+        <div class="field" style="margin-bottom:16px">
+          <label>DCA mensuel (€)</label>
+          <input type="range" id="sim-dca" min="100" max="5000" value="600" step="50" oninput="updateSim();document.getElementById('sim-dca-val').textContent=this.value+'€'">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-top:4px"><span>100€</span><span id="sim-dca-val" style="font-weight:500;color:var(--text)">600€</span><span>5000€</span></div>
+        </div>
+        <div class="field" style="margin-bottom:16px">
+          <label>Horizon (années)</label>
+          <input type="range" id="sim-years" min="1" max="30" value="10" oninput="updateSim();document.getElementById('sim-years-val').textContent=this.value+' ans'">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-top:4px"><span>1 an</span><span id="sim-years-val" style="font-weight:500;color:var(--text)">10 ans</span><span>30 ans</span></div>
+        </div>
+        <div class="field" style="margin-bottom:16px">
+          <label>Rendement annuel</label>
+          <input type="range" id="sim-rate" min="2" max="20" value="10" step="0.5" oninput="updateSim();document.getElementById('sim-rate-val').textContent=this.value+'%'">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-top:4px"><span>2%</span><span id="sim-rate-val" style="font-weight:500;color:var(--text)">10%</span><span>20%</span></div>
+        </div>
+        <div class="field" style="margin-bottom:16px">
+          <label>Capital de départ (€)</label>
+          <input type="number" id="sim-initial" value="0" placeholder="0" oninput="updateSim()">
+        </div>
+      </div>
+      <div>
+        <div class="sim-output" id="sim-output">
+          <div class="sim-result-label">Valeur finale estimée</div>
+          <div class="sim-result-num" id="sim-final">—</div>
+          <div class="sim-breakdown">
+            <div class="sim-cell"><div class="sim-cell-val" id="sim-inv">—</div><div class="sim-cell-lbl">Investi</div></div>
+            <div class="sim-cell"><div class="sim-cell-val" id="sim-gains">—</div><div class="sim-cell-lbl">Gains</div></div>
+            <div class="sim-cell"><div class="sim-cell-val" id="sim-mult">—</div><div class="sim-cell-lbl">Multiple</div></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:20px">
+          <div class="card-title">Courbe de capitalisation</div>
+          <canvas id="simCanvas" height="180"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">Scénarios comparés</div>
+      <div style="overflow-x:auto">
+        <table id="scenarios-table">
+          <thead><tr><th>Scénario</th><th>DCA</th><th>Rendement</th><th>5 ans</th><th>10 ans</th><th>20 ans</th><th>30 ans</th></tr></thead>
+          <tbody id="scenarios-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROADMAP -->
+<div class="page" id="page-roadmap">
+  <div class="container" style="padding-top:20px">
+    <div class="section-title-lg" style="margin-bottom:8px">Ta roadmap</div>
+    <p style="color:var(--text2);font-size:15px;margin-bottom:40px">De 0 à la liberté financière — étape par étape.</p>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:32px">
+      <div class="timeline" id="roadmap-tl"></div>
+      <div>
+        <div class="card">
+          <div class="card-title">Objectif liberté financière</div>
+          <div style="margin-bottom:16px">
+            <div style="font-size:13px;color:var(--text2);margin-bottom:8px">Capital nécessaire pour vivre de tes revenus</div>
+            <div class="field"><label>Dépenses/mois souhaitées (€)</label><input type="number" id="fi-spend" value="3000" oninput="updateFI()"></div>
+            <div class="field" style="margin-top:12px"><label>Rendement Lombard spread (%)</label><input type="number" id="fi-spread" value="8.5" step="0.5" oninput="updateFI()"></div>
+          </div>
+          <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:16px;text-align:center">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Capital requis</div>
+            <div style="font-family:var(--font-serif);font-size:32px;letter-spacing:-1px" id="fi-amount">423 000 €</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:4px" id="fi-sub">à 3 000 €/mois</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">Progression vers l'objectif</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Patrimoine actuel vs objectif</div>
+          <div class="progress"><div class="progress-fill" id="fi-progress" style="width:0%"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-top:8px">
+            <span id="fi-current-val">0 €</span>
+            <span id="fi-pct">0%</span>
+            <span id="fi-target-val">423 000 €</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MINDSET -->
+<div class="page" id="page-mindset">
+  <div class="quote-hero">
+    <div class="quote-date" id="q-date"></div>
+    <div class="quote-text" id="q-text">La règle n°1 : ne jamais perdre d'argent. La règle n°2 : ne jamais oublier la règle n°1.</div>
+    <div class="quote-author" id="q-author">Warren Buffett</div>
+    <div class="quote-role" id="q-role">Président de Berkshire Hathaway</div>
+    <div class="quote-nav" id="q-dots"></div>
+  </div>
+  <div class="container">
+    <div class="section-title-lg" style="margin-bottom:24px;text-align:center">Les principes qui font la différence</div>
+    <div class="principles" id="principles-grid"></div>
+  </div>
+</div>
+
+<script>
+const STATE = JSON.parse(localStorage.getItem('wealth_state') || '{"pea":[],"cto":[],"crypto":[],"immo":[],"dca":[]}');
+function save(){localStorage.setItem('wealth_state',JSON.stringify(STATE))}
+
+const QUOTES = [
+  {text:"La règle n°1 : ne jamais perdre d'argent. La règle n°2 : ne jamais oublier la règle n°1.",author:"Warren Buffett",role:"Président de Berkshire Hathaway"},
+  {text:"Le risque vient de ne pas savoir ce que vous faites.",author:"Warren Buffett",role:"Président de Berkshire Hathaway"},
+  {text:"La bourse est un dispositif pour transférer l'argent des impatients vers les patients.",author:"Warren Buffett",role:"Président de Berkshire Hathaway"},
+  {text:"Un investissement dans la connaissance paie toujours les meilleurs intérêts.",author:"Benjamin Franklin",role:"Père fondateur des États-Unis"},
+  {text:"Le temps sur le marché bat le timing du marché.",author:"Ken Fisher",role:"Fondateur de Fisher Investments"},
+  {text:"Ne cherchez pas l'aiguille dans la botte de foin. Achetez juste la botte de foin.",author:"John Bogle",role:"Fondateur de Vanguard"},
+  {text:"Les marchés boursiers à court terme sont un dispositif de vote, à long terme, une balance.",author:"Benjamin Graham",role:"Père de l'investissement value"},
+  {text:"Diversification is protection against ignorance. It makes little sense if you know what you are doing.",author:"Warren Buffett",role:"Président de Berkshire Hathaway"},
+  {text:"L'argent est un outil merveilleux. Il t'amènera où tu veux, mais il ne te remplacera pas comme conducteur.",author:"Ayn Rand",role:"Philosophe et auteure"},
+  {text:"La richesse n'est pas de l'argent en banque, des maisons ou des voitures. La richesse est au-delà des besoins.",author:"Naval Ravikant",role:"Entrepreneur & philosophe"},
+  {text:"Achète de la peur. Vends de la cupidité.",author:"Warren Buffett",role:"Président de Berkshire Hathaway"},
+  {text:"Compound interest is the eighth wonder of the world.",author:"Albert Einstein",role:"Physicien, Prix Nobel"},
+  {text:"La patience est le principal ingrédient de la réussite en investissement.",author:"Charlie Munger",role:"Vice-Président de Berkshire Hathaway"},
+  {text:"Ne mets jamais tous tes œufs dans le même panier, mais surveille bien ce panier.",author:"Andrew Carnegie",role:"Industriel & philanthrope"},
+  {text:"Tout le monde a un plan jusqu'à ce qu'il reçoive un coup de poing.",author:"Mike Tyson",role:"Légende de la boxe"},
+];
+
+const PRINCIPLES = [
+  {num:"01",title:"DCA systématique",text:"Investis une somme fixe chaque mois, peu importe le marché. Tu achètes plus quand c'est bas, moins quand c'est haut. La discipline bat l'intelligence."},
+  {num:"02",title:"Temps > Timing",text:"10 ans dans le marché valent mieux que 10 ans à essayer d'entrer au bon moment. Chaque mois hors marché est un mois de capitalisation perdu."},
+  {num:"03",title:"La fiscalité est un actif",text:"Le PEA, le LMNP, le crédit Lombard — optimiser ta fiscalité légalement c'est autant que trouver un meilleur rendement. Un euro d'impôt évité est un euro investi."},
+  {num:"04",title:"L'effet de levier discipliné",text:"Emprunter pour investir est légitime à condition que le rendement dépasse le coût. Max 40% de nantissement. Jamais au-delà — le margin call arrive toujours au pire moment."},
+  {num:"05",title:"Sorties crypto = réel",text:"Un gain sur wallet n'existe pas. Un gain sur compte bancaire existe. Sors régulièrement. Provisionne 30% pour les impôts. La discipline de sortie vaut l'entrée."},
+  {num:"06",title:"Patience pathologique",text:"Buffett détient certaines actions depuis 40 ans. La richesse intergénérationnelle se construit en décennies, pas en semaines. La patience est la stratégie."},
+];
+
+const CATALOG_DATA = [
+  {ticker:"CW8",name:"Amundi MSCI World",desc:"Exposition aux 1500 plus grandes entreprises mondiales. ETF de référence pour un portefeuille diversifié. Éligible PEA.",cat:"ETF",price:420.50,change:+0.82},
+  {ticker:"PE500",name:"Amundi S&P 500",desc:"Les 500 plus grandes entreprises américaines. Moteur historique de croissance depuis 80 ans. Éligible PEA.",cat:"ETF",price:62.30,change:+1.14},
+  {ticker:"PUST",name:"Lyxor Nasdaq 100",desc:"Exposition aux 100 leaders technologiques américains : Apple, Microsoft, Nvidia, Google. Éligible PEA.",cat:"ETF",price:45.20,change:+1.87},
+  {ticker:"AEEM",name:"Amundi MSCI Emerging Markets",desc:"Exposition aux marchés émergents : Chine, Inde, Brésil, Taïwan. Fort potentiel, volatilité plus élevée. Éligible PEA.",cat:"ETF",price:5.80,change:-0.34},
+  {ticker:"EWLD",name:"iShares MSCI World",desc:"Alternative au CW8, légèrement différente en composition. Bonne liquidité.",cat:"ETF",price:75.40,change:+0.62},
+  {ticker:"BTC",name:"Bitcoin",desc:"La première et plus grande crypto-monnaie. Réserve de valeur numérique, liquidité maximale. Cycle de halving tous les 4 ans.",cat:"Crypto",price:85200,change:+2.31},
+  {ticker:"ETH",name:"Ethereum",desc:"Plateforme de contrats intelligents. Infrastructure de la DeFi et des NFT. Passage au Proof of Stake.",cat:"Crypto",price:3420,change:+3.14},
+  {ticker:"SOL",name:"Solana",desc:"Blockchain haute performance, concurrent d'Ethereum. Fort écosystème DeFi, vitesse de transaction élevée.",cat:"Crypto",price:185,change:-1.20},
+  {ticker:"BNB",name:"Binance Coin",desc:"Token natif de Binance. Utilisé pour réduire les frais. Lié à l'écosystème BSC et BNB Chain.",cat:"Crypto",price:610,change:+0.55},
+  {ticker:"AVAX",name:"Avalanche",desc:"Blockchain interopérable avec des sous-réseaux. Concurrent d'Ethereum sur la finance institutionnelle.",cat:"Crypto",price:38,change:-2.10},
+  {ticker:"AAPL",name:"Apple",desc:"Leader mondial en produits électroniques et services. Marge nette >25%. Rachat massif d'actions. Valeur refuge tech.",cat:"Action",price:178,change:+0.43},
+  {ticker:"NVDA",name:"Nvidia",desc:"Dominant sur les GPU pour l'IA et le data center. Croissance explosive. Centre de l'infrastructure IA mondiale.",cat:"Action",price:875,change:+2.90},
+  {ticker:"MSFT",name:"Microsoft",desc:"Azure cloud, Office, LinkedIn, OpenAI. Machine à cash-flow. Dividende croissant depuis 20 ans.",cat:"Action",price:415,change:+0.71},
+  {ticker:"AMZN",name:"Amazon",desc:"AWS leader du cloud, e-commerce mondial. Forte diversification des revenus. Croissance structurelle.",cat:"Action",price:185,change:+1.22},
+  {ticker:"NOVO",name:"Novo Nordisk",desc:"Leader mondial des médicaments contre l'obésité et le diabète. Ozempic. Croissance exceptionnelle en Europe.",cat:"Action",price:108,change:-0.88},
+];
+
+const ROADMAP = [
+  {year:"2026",title:"Phase 0 — Fondations",desc:"Ouvrir PEA + CTO chez Fortuneo. Activer le Livret A. Commencer DCA 600€/mois.",status:"active"},
+  {year:"2026-2029",title:"Phase 1 — Alternance",desc:"DCA 400€/mois PEA + 150€ Livret A + 50€ crypto. Objectif : 16 500€ en PEA, 10 000€ apport immo.",status:""},
+  {year:"2029",title:"CDI Cybersécurité",desc:"Premier CDI, salaire ~2 200€ net. Passage en freelance visé à 25-26 ans.",status:""},
+  {year:"2030-2031",title:"Phase 2 — Apport immo",desc:"Rester chez les parents 12-18 mois. Turbo sur le Livret A. Atteindre 10 000€ d'apport.",status:""},
+  {year:"2031",title:"Phase 3 — Premier bien locatif",desc:"Studio Toulon base navale ~60 000€, 10k€ apport, locataire militaire. LMNP au réel.",status:""},
+  {year:"2033",title:"Phase 4 — Deuxième bien",desc:"Deuxième bien immobilier. Patrimoine >200k€. Accès crédit Lombard possible.",status:""},
+  {year:"2031-2033",title:"Phase 5 — CTO & Lombard",desc:"CTO dépasse 150k€. Ouverture banque privée. Premier crédit Lombard 40% de nantissement.",status:""},
+  {year:"2035",title:"Phase 6 — Scale",desc:"Salaire senior cyber >5 000€ net. Freelance SASU. 3 biens. Patrimoine >500k€.",status:""},
+  {year:"2040",title:"Liberté financière",desc:"Patrimoine >1M€. Revenus passifs > dépenses. Option de ne plus travailler.",status:""},
+];
+
+let currentQuote = 0;
+let currentCatFilter = 'Tous';
+let simChart = null, projChartObj = null;
+
+function showPage(name, el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+  if(name==='simulator') setTimeout(()=>{updateSim();buildScenarios()},100);
+  if(name==='mindset') renderMindset();
+  if(name==='catalog') renderCatalog();
+  if(name==='roadmap') renderRoadmap();
+  if(name==='dashboard') renderDashboard();
+}
+
+function showInner(name, el){
+  ['pea','cto','crypto','immo','dca'].forEach(n=>{
+    const el2 = document.getElementById('inner-'+n);
+    if(el2) el2.style.display='none';
+  });
+  document.querySelectorAll('.inner-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('inner-'+name).style.display='block';
+  el.classList.add('active');
+}
+
+function toggleTheme(){
+  const isDark = document.body.dataset.theme==='dark';
+  document.body.dataset.theme = isDark?'light':'dark';
+  document.getElementById('theme-btn').textContent = isDark?'🌙':'☀️';
+}
+
+function fmt(n){return Math.round(n).toLocaleString('fr-FR')+' €'}
+function fmtPct(n){return (n>=0?'+':'')+n.toFixed(2)+'%'}
+function fmtMult(n){return n.toFixed(2)+'x'}
+
+function addPos(cat){
+  const n=document.getElementById(cat+'-n').value.trim();
+  const i=parseFloat(document.getElementById(cat+'-i').value)||0;
+  const c=parseFloat(document.getElementById(cat+'-c').value)||0;
+  if(!n||!c) return;
+  STATE[cat].push({name:n,invested:i,current:c});
+  save();
+  ['n','i','c'].forEach(f=>document.getElementById(cat+'-'+f).value='');
+  renderPortfolio(cat);
+  renderDashboard();
+}
+
+function addImmo(){
+  const n=document.getElementById('immo-n').value.trim();
+  const p=parseFloat(document.getElementById('immo-p').value)||0;
+  const v=parseFloat(document.getElementById('immo-v').value)||0;
+  const l=parseFloat(document.getElementById('immo-l').value)||0;
+  const m=parseFloat(document.getElementById('immo-m').value)||0;
+  if(!n||!v) return;
+  STATE.immo.push({name:n,prix:p,valeur:v,loyer:l,mensualite:m});
+  save();
+  ['n','p','v','l','m'].forEach(f=>document.getElementById('immo-'+f).value='');
+  renderImmo();
+  renderDashboard();
+}
+
+function addDCA(){
+  const cat=document.getElementById('dca-cat').value;
+  const asset=document.getElementById('dca-asset').value.trim();
+  const amt=parseFloat(document.getElementById('dca-amt').value)||0;
+  const day=parseInt(document.getElementById('dca-day').value)||1;
+  if(!asset||!amt) return;
+  STATE.dca.push({cat,asset,amount:amt,day});
+  save();
+  document.getElementById('dca-asset').value='';
+  document.getElementById('dca-amt').value='';
+  renderDCA();
+}
+
+function removePos(cat,i){STATE[cat].splice(i,1);save();renderPortfolio(cat);renderDashboard()}
+function removeImmo(i){STATE.immo.splice(i,1);save();renderImmo();renderDashboard()}
+function removeDCA(i){STATE.dca.splice(i,1);save();renderDCA()}
+
+function renderPortfolio(cat){
+  const tbody = document.getElementById(cat+'-tbody');
+  if(!tbody) return;
+  if(!STATE[cat].length){
+    tbody.innerHTML=`<tr><td colspan="6"><div class="empty-state"><div class="empty-text">Aucune position ${cat.toUpperCase()}</div></div></td></tr>`;
+    return;
+  }
+  const isCrypto=cat==='crypto';
+  tbody.innerHTML=STATE[cat].map((p,i)=>{
+    const pnl=p.current-p.invested;
+    const pct=p.invested>0?pnl/p.invested*100:0;
+    const mult=p.invested>0?p.current/p.invested:1;
+    const cls=pnl>=0?'price-up':'price-down';
+    return `<tr class="tr-transition">
+      <td style="font-weight:500">${p.name}</td>
+      <td>${fmt(p.invested)}</td>
+      <td style="font-weight:500">${fmt(p.current)}</td>
+      <td class="${cls}">${pnl>=0?'+':''}${fmt(pnl)}</td>
+      <td class="${cls}">${isCrypto?fmtMult(mult):fmtPct(pct)}</td>
+      <td><button class="btn-sm btn-danger" onclick="removePos('${cat}',${i})">Retirer</button></td>
+    </tr>`;
+  }).join('');
+  if(isCrypto){
+    const totalPnl=STATE.crypto.reduce((s,p)=>s+(p.current-p.invested),0);
+    const tax=Math.max(0,totalPnl*0.3);
+    document.getElementById('crypto-tax-provision').textContent=fmt(tax);
+  }
+}
+
+function renderImmo(){
+  const wrap=document.getElementById('immo-cards-wrap');
+  if(!STATE.immo.length){
+    wrap.innerHTML=`<div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-text">Aucun bien</div></div>`;
+    return;
+  }
+  wrap.innerHTML=STATE.immo.map((b,i)=>{
+    const cf=b.loyer-b.mensualite;
+    const rend=b.valeur>0?(b.loyer*12/b.valeur*100):0;
+    const pv=b.valeur-b.prix;
+    return `<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:18px;font-weight:500">${b.name}</div>
+        <button class="btn-sm btn-danger" onclick="removeImmo(${i})">Retirer</button>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card"><div class="metric-label">Valeur estimée</div><div class="metric-value" style="font-size:22px">${fmt(b.valeur)}</div></div>
+        <div class="metric-card"><div class="metric-label">Cash-flow mensuel</div><div class="metric-value ${cf>=0?'delta-up':'delta-down'}" style="font-size:22px">${cf>=0?'+':''}${fmt(cf)}</div></div>
+        <div class="metric-card"><div class="metric-label">Rendement brut</div><div class="metric-value" style="font-size:22px">${rend.toFixed(1)}%</div></div>
+        <div class="metric-card"><div class="metric-label">Plus-value latente</div><div class="metric-value ${pv>=0?'delta-up':'delta-down'}" style="font-size:22px">${pv>=0?'+':''}${fmt(pv)}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderDCA(){
+  const list=document.getElementById('dca-list');
+  const totalWrap=document.getElementById('dca-total-wrap');
+  if(!STATE.dca.length){
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">Aucun DCA</div></div>`;
+    if(totalWrap) totalWrap.style.display='none';
+    return;
+  }
+  const catBadge={PEA:'badge-blue',CTO:'badge-green',Crypto:'badge-amber','Livret A':'badge-gray'};
+  list.innerHTML=STATE.dca.map((d,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="badge ${catBadge[d.cat]||'badge-gray'}">${d.cat}</span>
+        <span style="font-weight:500">${d.asset}</span>
+        <span style="font-size:12px;color:var(--text3)">le ${d.day} du mois</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:18px;font-weight:300">${fmt(d.amount)}</span>
+        <button class="btn-sm btn-danger" onclick="removeDCA(${i})">×</button>
+      </div>
+    </div>`).join('');
+  const total=STATE.dca.reduce((s,d)=>s+d.amount,0);
+  if(totalWrap){totalWrap.style.display='flex';document.getElementById('dca-total').textContent=fmt(total)}
+}
+
+function getTotals(){
+  const pea=STATE.pea.reduce((s,p)=>s+p.current,0);
+  const cto=STATE.cto.reduce((s,p)=>s+p.current,0);
+  const crypto=STATE.crypto.reduce((s,p)=>s+p.current,0);
+  const immo=STATE.immo.reduce((s,b)=>s+b.valeur,0);
+  const invested=STATE.pea.reduce((s,p)=>s+p.invested,0)+STATE.cto.reduce((s,p)=>s+p.invested,0)+STATE.crypto.reduce((s,p)=>s+p.invested,0)+STATE.immo.reduce((s,b)=>s+b.prix,0);
+  return {pea,cto,crypto,immo,total:pea+cto+crypto+immo,invested};
+}
+
+function renderDashboard(){
+  const {pea,cto,crypto,immo,total,invested}=getTotals();
+  document.getElementById('d-total').textContent=fmt(total);
+  const pct=invested>0?(total-invested)/invested*100:0;
+  document.getElementById('d-total-pct').textContent=(pct>=0?'+':'')+pct.toFixed(2)+'%';
+  document.getElementById('d-total-pct').className=pct>=0?'delta-up':'delta-down';
+  document.getElementById('d-pea').textContent=fmt(pea);
+  document.getElementById('d-pea-d').textContent=STATE.pea.length+' position'+(STATE.pea.length!==1?'s':'');
+  document.getElementById('d-crypto').textContent=fmt(crypto);
+  document.getElementById('d-crypto-d').textContent=STATE.crypto.length+' position'+(STATE.crypto.length!==1?'s':'');
+  document.getElementById('d-immo').textContent=fmt(immo);
+  document.getElementById('d-immo-d').textContent=STATE.immo.length+' bien'+(STATE.immo.length!==1?'s':'');
+  renderDonut(pea,cto,crypto,immo);
+  renderProj(total);
+  renderAllTable();
+  updateFI();
+
+  const q=getDailyQuote();
+  document.getElementById('dash-quote-text').textContent=q.text;
+  document.getElementById('dash-quote-author').textContent='— '+q.author;
+}
+
+function renderDonut(pea,cto,crypto,immo){
+  const canvas=document.getElementById('donutChart');
+  const ctx=canvas.getContext('2d');
+  const total=pea+cto+crypto+immo;
+  ctx.clearRect(0,0,160,160);
+  if(!total){ctx.fillStyle='var(--bg3)';ctx.beginPath();ctx.arc(80,80,60,0,Math.PI*2);ctx.fill();return}
+  const data=[{v:pea,c:'#0071e3',l:'PEA'},{v:cto,c:'#34c759',l:'CTO'},{v:crypto,c:'#ff9f0a',l:'Crypto'},{v:immo,c:'#af52de',l:'Immo'}].filter(d=>d.v>0);
+  let start=-Math.PI/2;
+  data.forEach(d=>{
+    const slice=d.v/total*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(80,80);ctx.arc(80,80,70,start,start+slice);ctx.fillStyle=d.c;ctx.fill();
+    start+=slice;
+  });
+  ctx.beginPath();ctx.arc(80,80,42,0,Math.PI*2);ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--bg2').trim();ctx.fill();
+  ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--text').trim();ctx.font='500 12px DM Sans';ctx.textAlign='center';ctx.fillText(fmt(total),80,78);ctx.font='400 10px DM Sans';ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--text2').trim();ctx.fillText('total',80,92);
+  const legend=document.getElementById('donut-legend');
+  legend.innerHTML=data.map(d=>`<div class="legend-item"><span class="legend-dot" style="background:${d.c}"></span><span>${d.l} — ${(d.v/total*100).toFixed(0)}%</span></div>`).join('');
+}
+
+function renderProj(total){
+  const canvas=document.getElementById('projCanvas');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const w=canvas.offsetWidth||500,h=160;
+  canvas.width=w;canvas.height=h;
+  ctx.clearRect(0,0,w,h);
+  const years=11;
+  const vals=Array.from({length:years},(_,i)=>total*Math.pow(1.07,i));
+  const maxV=vals[vals.length-1]||1;
+  const pad={t:10,r:20,b:30,l:60};
+  const inner={w:w-pad.l-pad.r,h:h-pad.t-pad.b};
+  const accent='#0071e3';
+  ctx.beginPath();
+  vals.forEach((v,i)=>{
+    const x=pad.l+i/(years-1)*inner.w;
+    const y=pad.t+inner.h-(v/maxV)*inner.h;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle=accent;ctx.lineWidth=2;ctx.stroke();
+  ctx.lineTo(pad.l+inner.w,pad.t+inner.h);ctx.lineTo(pad.l,pad.t+inner.h);ctx.closePath();
+  ctx.fillStyle='rgba(0,113,227,0.08)';ctx.fill();
+  const isDark=document.body.dataset.theme==='dark';
+  const textCol=isDark?'#aeaeb2':'#6e6e73';
+  ctx.fillStyle=textCol;ctx.font='11px DM Sans';ctx.textAlign='center';
+  [0,2,4,6,8,10].forEach(i=>{const x=pad.l+i/(years-1)*inner.w;ctx.fillText(new Date().getFullYear()+i,x,h-8)});
+  ctx.textAlign='right';
+  [0,.5,1].forEach(f=>{const y=pad.t+inner.h-f*inner.h;const v=maxV*f;ctx.fillText(Math.round(v/1000)+'k',pad.l-6,y+4)});
+}
+
+function renderAllTable(){
+  const tbody=document.getElementById('all-tbody');
+  const all=[
+    ...STATE.pea.map(p=>({...p,cat:'PEA'})),
+    ...STATE.cto.map(p=>({...p,cat:'CTO'})),
+    ...STATE.crypto.map(p=>({...p,cat:'Crypto'})),
+    ...STATE.immo.map(b=>({name:b.name,invested:b.prix,current:b.valeur,cat:'Immo'}))
+  ];
+  if(!all.length){
+    tbody.innerHTML=`<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">Aucune position</div><div class="empty-sub">Ajoute tes actifs dans l'onglet Portfolio</div></div></td></tr>`;
+    return;
+  }
+  const catBadge={PEA:'badge-blue',CTO:'badge-green',Crypto:'badge-amber',Immo:'badge-gray'};
+  tbody.innerHTML=all.map(p=>{
+    const pnl=p.current-(p.invested||0);
+    const pct=p.invested>0?pnl/p.invested*100:0;
+    const cls=pnl>=0?'price-up':'price-down';
+    return `<tr class="tr-transition">
+      <td style="font-weight:500">${p.name}</td>
+      <td><span class="badge ${catBadge[p.cat]}">${p.cat}</span></td>
+      <td style="font-weight:500">${fmt(p.current)}</td>
+      <td>${p.invested?fmt(p.invested):'—'}</td>
+      <td class="${cls}">${p.invested?(pnl>=0?'+':'')+fmt(pnl):''}</td>
+      <td class="${cls}">${p.invested?fmtPct(pct):''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function getDailyQuote(){
+  const idx=Math.floor(Date.now()/86400000)%QUOTES.length;
+  return QUOTES[idx];
+}
+
+function renderMindset(){
+  const d=new Date();
+  document.getElementById('q-date').textContent=d.toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const idx=Math.floor(Date.now()/86400000)%QUOTES.length;
+  currentQuote=idx;
+  showQuote(currentQuote);
+  const dots=document.getElementById('q-dots');
+  dots.innerHTML=QUOTES.map((_,i)=>`<div class="quote-dot ${i===idx?'active':''}" onclick="showQuote(${i})"></div>`).join('');
+  document.getElementById('principles-grid').innerHTML=PRINCIPLES.map(p=>`
+    <div class="principle">
+      <div class="principle-num">${p.num}</div>
+      <div class="principle-title">${p.title}</div>
+      <div class="principle-text">${p.text}</div>
+    </div>`).join('');
+}
+
+function showQuote(i){
+  currentQuote=i;
+  const q=QUOTES[i];
+  document.getElementById('q-text').textContent=q.text;
+  document.getElementById('q-author').textContent=q.author;
+  document.getElementById('q-role').textContent=q.role;
+  document.querySelectorAll('.quote-dot').forEach((d,j)=>d.classList.toggle('active',j===i));
+}
+
+function renderCatalog(){
+  filterCatalog();
+}
+
+function filterCat(cat,el){
+  currentCatFilter=cat;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  filterCatalog();
+}
+
+function filterCatalog(){
+  const q=(document.getElementById('catalog-search')?.value||'').toLowerCase();
+  const grid=document.getElementById('catalog-grid');
+  const items=CATALOG_DATA.filter(i=>{
+    const matchCat=currentCatFilter==='Tous'||i.cat===currentCatFilter;
+    const matchQ=!q||i.name.toLowerCase().includes(q)||i.ticker.toLowerCase().includes(q)||i.desc.toLowerCase().includes(q);
+    return matchCat&&matchQ;
+  });
+  grid.innerHTML=items.map(i=>{
+    const cls=i.change>=0?'price-up':'price-down';
+    const badge=i.cat==='ETF'?'badge-blue':i.cat==='Crypto'?'badge-amber':'badge-green';
+    return `<div class="catalog-item" onclick="addToCatalog('${i.ticker}','${i.cat}',${i.price})">
+      <div class="catalog-ticker">${i.ticker} <span class="badge ${badge}" style="margin-left:6px">${i.cat}</span></div>
+      <div class="catalog-name">${i.name}</div>
+      <div class="catalog-desc">${i.desc}</div>
+      <div class="catalog-footer">
+        <span class="catalog-price">${i.price<10?i.price.toFixed(2):Math.round(i.price).toLocaleString('fr-FR')} ${i.cat==='Crypto'?'$':'€'}</span>
+        <span class="catalog-change ${cls}">${i.change>=0?'+':''}${i.change.toFixed(2)}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addToCatalog(ticker,cat,price){
+  const pCat=cat==='ETF'?'pea':cat==='Crypto'?'crypto':'cto';
+  const n=prompt(`Ajouter ${ticker} à ton portfolio\nMontant investi en € :`);
+  if(!n||isNaN(n)) return;
+  const v=prompt(`Valeur actuelle en € :`);
+  if(!v||isNaN(v)) return;
+  STATE[pCat].push({name:ticker,invested:parseFloat(n),current:parseFloat(v)});
+  save();
+  renderPortfolio(pCat);
+  renderDashboard();
+  alert(`✅ ${ticker} ajouté à ton portfolio ${pCat.toUpperCase()} !`);
+}
+
+function computeFV(pmt,r,n,pv){
+  const mr=r/12;
+  return pv*Math.pow(1+mr,n)+pmt*((Math.pow(1+mr,n)-1)/mr);
+}
+
+function updateSim(){
+  const dca=parseFloat(document.getElementById('sim-dca').value)||600;
+  const years=parseInt(document.getElementById('sim-years').value)||10;
+  const rate=parseFloat(document.getElementById('sim-rate').value)/100||0.1;
+  const init=parseFloat(document.getElementById('sim-initial').value)||0;
+  const n=years*12;
+  const final=computeFV(dca,rate,n,init);
+  const invested=dca*n+init;
+  const gains=final-invested;
+  document.getElementById('sim-final').textContent=fmt(final);
+  document.getElementById('sim-inv').textContent=fmt(invested);
+  document.getElementById('sim-gains').textContent=fmt(gains);
+  document.getElementById('sim-mult').textContent=fmtMult(final/invested);
+  renderSimChart(dca,rate,years,init);
+}
+
+function renderSimChart(dca,rate,years,init){
+  const canvas=document.getElementById('simCanvas');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const w=canvas.offsetWidth||500,h=180;
+  canvas.width=w;canvas.height=h;
+  ctx.clearRect(0,0,w,h);
+  const pts=years*12+1;
+  const invested=[],total=[];
+  for(let i=0;i<pts;i++){
+    invested.push(dca*i+init);
+    total.push(computeFV(dca,rate,i,init));
+  }
+  const maxV=total[total.length-1]||1;
+  const pad={t:10,r:20,b:30,l:60};
+  const iw=w-pad.l-pad.r,ih=h-pad.t-pad.b;
+  const isDark=document.body.dataset.theme==='dark';
+  const textCol=isDark?'#aeaeb2':'#6e6e73';
+  [[invested,'rgba(174,174,178,0.5)'],[total,'#0071e3']].forEach(([data,color],ci)=>{
+    ctx.beginPath();
+    data.forEach((v,i)=>{
+      const x=pad.l+i/(pts-1)*iw;
+      const y=pad.t+ih-(v/maxV)*ih;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle=color;ctx.lineWidth=ci===1?2:1.5;ctx.stroke();
+  });
+  ctx.fillStyle=textCol;ctx.font='11px DM Sans';ctx.textAlign='center';
+  for(let y=0;y<=years;y+=Math.ceil(years/5)){
+    const x=pad.l+y/years*iw;
+    ctx.fillText(new Date().getFullYear()+y,x,h-8);
+  }
+  ctx.textAlign='right';
+  [0,.5,1].forEach(f=>{
+    const yy=pad.t+ih-f*ih;
+    ctx.fillText(Math.round(maxV*f/1000)+'k',pad.l-6,yy+4);
+  });
+}
+
+function buildScenarios(){
+  const scenarios=[
+    {label:'Conservateur',dca:300,rate:0.07},
+    {label:'Base (toi)',dca:600,rate:0.10},
+    {label:'Optimiste',dca:1000,rate:0.12},
+    {label:'Freelance',dca:3000,rate:0.12},
+    {label:'Post-crypto 250k',dca:1500,rate:0.12},
+  ];
+  const tbody=document.getElementById('scenarios-tbody');
+  if(!tbody) return;
+  tbody.innerHTML=scenarios.map(s=>{
+    const fv=(y)=>fmt(computeFV(s.dca,s.rate,y*12,0));
+    return `<tr>
+      <td style="font-weight:500">${s.label}</td>
+      <td>${fmt(s.dca)}</td>
+      <td>${(s.rate*100).toFixed(0)}%</td>
+      <td>${fv(5)}</td>
+      <td style="font-weight:500">${fv(10)}</td>
+      <td class="price-up">${fv(20)}</td>
+      <td class="delta-up" style="font-weight:500">${fv(30)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRoadmap(){
+  const tl=document.getElementById('roadmap-tl');
+  tl.innerHTML=ROADMAP.map(r=>`
+    <div class="tl-item ${r.status}">
+      <div class="tl-year">${r.year}</div>
+      <div class="tl-title">${r.title}</div>
+      <div class="tl-desc">${r.desc}</div>
+    </div>`).join('');
+  updateFI();
+}
+
+function updateFI(){
+  const spend=parseFloat(document.getElementById('fi-spend')?.value)||3000;
+  const spread=parseFloat(document.getElementById('fi-spread')?.value)||8.5;
+  const target=(spend*12)/(spread/100);
+  const current=getTotals().total;
+  const pct=Math.min(100,current/target*100);
+  if(document.getElementById('fi-amount')) document.getElementById('fi-amount').textContent=fmt(target);
+  if(document.getElementById('fi-sub')) document.getElementById('fi-sub').textContent=`à ${fmt(spend)}/mois`;
+  if(document.getElementById('fi-progress')) document.getElementById('fi-progress').style.width=pct.toFixed(1)+'%';
+  if(document.getElementById('fi-current-val')) document.getElementById('fi-current-val').textContent=fmt(current);
+  if(document.getElementById('fi-target-val')) document.getElementById('fi-target-val').textContent=fmt(target);
+  if(document.getElementById('fi-pct')) document.getElementById('fi-pct').textContent=pct.toFixed(1)+'%';
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(STATE,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wealth_backup.json';a.click();
+}
+
+function importData(input){
+  const file=input.files[0];if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      Object.assign(STATE,data);save();
+      renderDashboard();renderPortfolio('pea');renderPortfolio('cto');renderPortfolio('crypto');renderImmo();renderDCA();
+      alert('✅ Données importées avec succès');
+    }catch{alert('❌ Fichier invalide')}
+  };reader.readAsText(file);
+}
+
+function updateTime(){
+  const now=new Date();
+  document.getElementById('live-time').textContent=now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// INIT
+renderDashboard();
+renderPortfolio('pea');renderPortfolio('cto');renderPortfolio('crypto');renderImmo();renderDCA();
+updateTime();setInterval(updateTime,1000);
+updateSim();
+</script>
+</body>
+</html>
