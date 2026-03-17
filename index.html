@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="WEALTH — Tableau de bord patrimonial. Suivez vos investissements PEA, CTO, crypto et immobilier en temps réel.">
+  <meta property="og:title" content="WEALTH — Tableau de bord patrimonial">
+  <meta property="og:description" content="Suivez vos investissements et projetez votre liberté financière.">
+  <title>WEALTH — Tableau de bord patrimonial</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,200;0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-theme="light">
+
+<!-- ═══════════ NAVBAR ═══════════ -->
+<nav>
+  <span class="nav-logo">W E A L T H</span>
+  <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">☰</button>
+  <div class="nav-links" id="nav-links">
+    <button class="nav-link active" data-page="dashboard">Dashboard</button>
+    <button class="nav-link" data-page="portfolio">Portfolio</button>
+    <button class="nav-link" data-page="catalog">Catalogue</button>
+    <button class="nav-link" data-page="simulator">Simulateur</button>
+    <button class="nav-link" data-page="roadmap">Roadmap</button>
+    <button class="nav-link" data-page="mindset">Mindset</button>
+  </div>
+  <div class="nav-right">
+    <span id="live-time"></span>
+    <span class="live-dot"></span>
+    <button class="theme-btn" id="theme-btn" aria-label="Toggle theme">🌙</button>
+  </div>
+</nav>
+
+<!-- ═══════════ DASHBOARD ═══════════ -->
+<div class="page active" id="page-dashboard">
+  <div class="hero">
+    <div class="hero-eyebrow">Tableau de bord</div>
+    <h1 class="hero-title">Ton patrimoine,<br><em>en temps réel.</em></h1>
+    <p class="hero-sub">Suis tes actifs, projette ta liberté financière, et reste focus sur l'objectif.</p>
+  </div>
+  <div class="container">
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Patrimoine net</div>
+        <div class="metric-value" id="d-total">0 €</div>
+        <div class="metric-delta"><span class="delta-up" id="d-total-pct">+0.00%</span> vs investi</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">PEA</div>
+        <div class="metric-value" id="d-pea">0 €</div>
+        <div class="metric-delta" id="d-pea-d" style="color:var(--text3)">0 positions</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Crypto</div>
+        <div class="metric-value" id="d-crypto">0 €</div>
+        <div class="metric-delta" id="d-crypto-d" style="color:var(--text3)">0 positions</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Immobilier</div>
+        <div class="metric-value" id="d-immo">0 €</div>
+        <div class="metric-delta" id="d-immo-d" style="color:var(--text3)">0 biens</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px" class="grid-2-col">
+      <div class="card">
+        <div class="card-title">Allocation <span style="font-size:12px;color:var(--text3)">actuelle</span></div>
+        <div class="donut-wrap">
+          <canvas id="donutChart" width="160" height="160" style="flex-shrink:0"></canvas>
+          <div class="donut-legend" id="donut-legend">
+            <div style="font-size:13px;color:var(--text3)">Ajoute des positions</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Projection 10 ans <span style="font-size:12px;color:var(--text3)">7%/an</span></div>
+        <canvas id="projCanvas" height="160"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        Quote du jour
+        <span style="font-size:12px;color:var(--text3)" id="dash-quote-author"></span>
+      </div>
+      <div style="font-family:var(--font-serif);font-size:18px;line-height:1.5;color:var(--text2)" id="dash-quote-text">Chargement...</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Toutes les positions <button class="btn-sm" id="btn-manage-portfolio">Gérer →</button></div>
+      <table id="all-table">
+        <thead><tr><th>Actif</th><th>Catégorie</th><th>Valeur</th><th>Investi</th><th>+/- value</th><th>Perf.</th></tr></thead>
+        <tbody id="all-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PORTFOLIO ═══════════ -->
+<div class="page" id="page-portfolio">
+  <div class="container" style="padding-top:20px">
+    <div class="section-header">
+      <div class="section-title-lg">Portfolio</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="btn-export">Exporter JSON</button>
+        <button class="btn-sm" id="btn-import">Importer</button>
+        <input type="file" id="import-file" accept=".json" style="display:none">
+      </div>
+    </div>
+
+    <div class="inner-tabs">
+      <button class="inner-tab active" data-tab="pea">PEA</button>
+      <button class="inner-tab" data-tab="cto">CTO</button>
+      <button class="inner-tab" data-tab="crypto">Crypto</button>
+      <button class="inner-tab" data-tab="immo">Immobilier</button>
+      <button class="inner-tab" data-tab="dca">DCA Plan</button>
+    </div>
+
+    <!-- PEA -->
+    <div id="inner-pea">
+      <div class="card">
+        <div class="card-title">Ajouter une position PEA</div>
+        <div class="form-grid">
+          <div class="field"><label>Nom / ETF</label><input id="pea-n" placeholder="ex: CW8 MSCI World"></div>
+          <div class="field"><label>Investi (€)</label><input id="pea-i" type="number" placeholder="0"></div>
+          <div class="field"><label>Valeur actuelle (€)</label><input id="pea-c" type="number" placeholder="0"></div>
+          <div class="field" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" id="btn-add-pea">Ajouter</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>ETF</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Perf.</th><th></th></tr></thead>
+        <tbody id="pea-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- CTO -->
+    <div id="inner-cto" style="display:none">
+      <div class="card">
+        <div class="card-title">Ajouter une position CTO</div>
+        <div class="form-grid">
+          <div class="field"><label>Nom</label><input id="cto-n" placeholder="ex: SP500 ETF"></div>
+          <div class="field"><label>Investi (€)</label><input id="cto-i" type="number" placeholder="0"></div>
+          <div class="field"><label>Valeur actuelle (€)</label><input id="cto-c" type="number" placeholder="0"></div>
+          <div class="field" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" id="btn-add-cto">Ajouter</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>Actif</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Perf.</th><th></th></tr></thead>
+        <tbody id="cto-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- CRYPTO -->
+    <div id="inner-crypto" style="display:none">
+      <div class="card">
+        <div class="card-title">Ajouter une position Crypto</div>
+        <div class="form-grid">
+          <div class="field"><label>Token</label><input id="crypto-n" placeholder="ex: BTC, ETH, SOL"></div>
+          <div class="field"><label>Investi (€)</label><input id="crypto-i" type="number" placeholder="0"></div>
+          <div class="field"><label>Valeur actuelle (€)</label><input id="crypto-c" type="number" placeholder="0"></div>
+          <div class="field" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" id="btn-add-crypto">Ajouter</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">⚠️ Provision fiscale 30% <span id="crypto-tax-provision" style="color:var(--red);font-weight:500">0 €</span> à mettre de côté</div>
+        <table><thead><tr><th>Token</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Multiple</th><th></th></tr></thead>
+        <tbody id="crypto-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- IMMO -->
+    <div id="inner-immo" style="display:none">
+      <div class="card">
+        <div class="card-title">Ajouter un bien immobilier</div>
+        <div class="form-grid">
+          <div class="field"><label>Nom</label><input id="immo-n" placeholder="ex: Studio Toulon"></div>
+          <div class="field"><label>Prix achat (€)</label><input id="immo-p" type="number" placeholder="0"></div>
+          <div class="field"><label>Valeur estimée (€)</label><input id="immo-v" type="number" placeholder="0"></div>
+          <div class="field"><label>Loyer mensuel (€)</label><input id="immo-l" type="number" placeholder="0"></div>
+          <div class="field"><label>Mensualité crédit (€)</label><input id="immo-m" type="number" placeholder="0"></div>
+          <div class="field" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" id="btn-add-immo">Ajouter</button></div>
+        </div>
+      </div>
+      <div id="immo-cards-wrap"></div>
+    </div>
+
+    <!-- DCA -->
+    <div id="inner-dca" style="display:none">
+      <div class="card">
+        <div class="card-title">Configurer un DCA mensuel</div>
+        <div class="form-grid">
+          <div class="field"><label>Catégorie</label>
+            <select id="dca-cat"><option value="PEA">PEA</option><option value="CTO">CTO</option><option value="Crypto">Crypto</option><option value="Livret A">Livret A</option></select>
+          </div>
+          <div class="field"><label>Actif</label><input id="dca-asset" placeholder="ex: CW8, BTC..."></div>
+          <div class="field"><label>Montant (€/mois)</label><input id="dca-amt" type="number" placeholder="0"></div>
+          <div class="field"><label>Jour du mois</label><input id="dca-day" type="number" min="1" max="28" value="1"></div>
+          <div class="field" style="justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" id="btn-add-dca">Ajouter</button></div>
+        </div>
+      </div>
+      <div class="card" id="dca-card">
+        <div class="card-title">Plan DCA actuel</div>
+        <div id="dca-list"></div>
+        <div id="dca-total-wrap" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:14px;color:var(--text2)">Total investi / mois</span>
+          <span style="font-size:20px;font-weight:300" id="dca-total">0 €</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ CATALOG ═══════════ -->
+<div class="page" id="page-catalog">
+  <div class="container" style="padding-top:20px">
+    <div class="section-header">
+      <div class="section-title-lg">Catalogue d'actifs</div>
+      <div class="live-dot" style="margin-right:4px"></div>
+    </div>
+    <div class="search-bar">
+      <input class="search-input" id="catalog-search" placeholder="Rechercher un ETF, action ou crypto...">
+    </div>
+    <div class="filter-pills" id="cat-filters">
+      <button class="pill active" data-cat="Tous">Tous</button>
+      <button class="pill" data-cat="ETF">ETF</button>
+      <button class="pill" data-cat="Crypto">Crypto</button>
+      <button class="pill" data-cat="Action">Actions</button>
+    </div>
+    <div class="catalog-grid" id="catalog-grid"></div>
+  </div>
+</div>
+
+<!-- ═══════════ SIMULATOR ═══════════ -->
+<div class="page" id="page-simulator">
+  <div class="container" style="padding-top:20px">
+    <div class="section-title-lg" style="margin-bottom:32px">Simulateur patrimonial</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="grid-2-col">
+      <div class="card">
+        <div class="card-title">Paramètres</div>
+        <div class="field" style="margin-bottom:16px">
+          <label>DCA mensuel (€)</label>
+          <input type="range" id="sim-dca" min="100" max="5000" value="600" step="50">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-top:4px"><span>100€</span><span id="sim-dca-val" style="font-weight:500;color:var(--text)">600€</span><span>5000€</span></div>
+        </div>
+        <div class="field" style="margin-bottom:16px">
+          <label>Horizon (années)</label>
+          <input type="range" id="sim-years" min="1" max="30" value="10">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-top:4px"><span>1 an</span><span id="sim-years-val" style="font-weight:500;color:var(--text)">10 ans</span><span>30 ans</span></div>
+        </div>
+        <div class="field" style="margin-bottom:16px">
+          <label>Rendement annuel</label>
+          <input type="range" id="sim-rate" min="2" max="20" value="10" step="0.5">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-top:4px"><span>2%</span><span id="sim-rate-val" style="font-weight:500;color:var(--text)">10%</span><span>20%</span></div>
+        </div>
+        <div class="field" style="margin-bottom:16px">
+          <label>Capital de départ (€)</label>
+          <input type="number" id="sim-initial" value="0" placeholder="0">
+        </div>
+      </div>
+      <div>
+        <div class="sim-output" id="sim-output">
+          <div class="sim-result-label">Valeur finale estimée</div>
+          <div class="sim-result-num" id="sim-final">—</div>
+          <div class="sim-breakdown">
+            <div class="sim-cell"><div class="sim-cell-val" id="sim-inv">—</div><div class="sim-cell-lbl">Investi</div></div>
+            <div class="sim-cell"><div class="sim-cell-val" id="sim-gains">—</div><div class="sim-cell-lbl">Gains</div></div>
+            <div class="sim-cell"><div class="sim-cell-val" id="sim-mult">—</div><div class="sim-cell-lbl">Multiple</div></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:20px">
+          <div class="card-title">Courbe de capitalisation</div>
+          <canvas id="simCanvas" height="180"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">Scénarios comparés</div>
+      <div style="overflow-x:auto">
+        <table id="scenarios-table">
+          <thead><tr><th>Scénario</th><th>DCA</th><th>Rendement</th><th>5 ans</th><th>10 ans</th><th>20 ans</th><th>30 ans</th></tr></thead>
+          <tbody id="scenarios-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ROADMAP ═══════════ -->
+<div class="page" id="page-roadmap">
+  <div class="container" style="padding-top:20px">
+    <div class="section-title-lg" style="margin-bottom:8px">Ta roadmap</div>
+    <p style="color:var(--text2);font-size:15px;margin-bottom:40px">De 0 à la liberté financière — étape par étape.</p>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:32px" class="grid-2-col">
+      <div class="timeline" id="roadmap-tl"></div>
+      <div>
+        <div class="card">
+          <div class="card-title">Objectif liberté financière</div>
+          <div style="margin-bottom:16px">
+            <div style="font-size:13px;color:var(--text2);margin-bottom:8px">Capital nécessaire pour vivre de tes revenus</div>
+            <div class="field"><label>Dépenses/mois souhaitées (€)</label><input type="number" id="fi-spend" value="3000"></div>
+            <div class="field" style="margin-top:12px"><label>Rendement Lombard spread (%)</label><input type="number" id="fi-spread" value="8.5" step="0.5"></div>
+          </div>
+          <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:16px;text-align:center">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Capital requis</div>
+            <div style="font-family:var(--font-serif);font-size:32px;letter-spacing:-1px" id="fi-amount">423 000 €</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:4px" id="fi-sub">à 3 000 €/mois</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">Progression vers l'objectif</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Patrimoine actuel vs objectif</div>
+          <div class="progress"><div class="progress-fill" id="fi-progress" style="width:0%"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-top:8px">
+            <span id="fi-current-val">0 €</span>
+            <span id="fi-pct">0%</span>
+            <span id="fi-target-val">423 000 €</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MINDSET ═══════════ -->
+<div class="page" id="page-mindset">
+  <div class="quote-hero">
+    <div class="quote-date" id="q-date"></div>
+    <div class="quote-text" id="q-text">La règle n°1 : ne jamais perdre d'argent. La règle n°2 : ne jamais oublier la règle n°1.</div>
+    <div class="quote-author" id="q-author">Warren Buffett</div>
+    <div class="quote-role" id="q-role">Président de Berkshire Hathaway</div>
+    <div class="quote-nav" id="q-dots"></div>
+  </div>
+  <div class="container">
+    <div class="section-title-lg" style="margin-bottom:24px;text-align:center">Les principes qui font la différence</div>
+    <div class="principles" id="principles-grid"></div>
+  </div>
+</div>
+
+<!-- ═══════════ SCRIPTS (ordre exact) ═══════════ -->
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/portfolio.js"></script>
+<script src="js/simulator.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/mindset.js"></script>
+<script src="js/roadmap.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
