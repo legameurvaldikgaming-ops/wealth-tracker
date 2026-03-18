@@ -1578,3 +1578,148 @@ canvas { display: block; }
 .w-full { width: 100%; }
 .hidden { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* ══════════════════════════════════════
+   V4 STYLES — Wealth Tracker Pro
+   ══════════════════════════════════════ */
+
+/* ── V4 Dashboard Top Row ────────────── */
+.v4-top-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:0; }
+@media(max-width:900px){ .v4-top-row { grid-template-columns:1fr 1fr; } }
+@media(max-width:640px){ .v4-top-row { grid-template-columns:1fr; } }
+
+/* ── Health Score ─────────────────────── */
+.v4-health-card { }
+.health-gauge-wrap { text-align:center; padding:12px 0; }
+.health-gauge-number { font-size:56px; font-weight:300; letter-spacing:-2px; line-height:1; font-family:'JetBrains Mono',monospace; }
+.health-gauge-label { font-size:14px; font-weight:600; margin-top:4px; }
+.health-gauge-bar-wrap { height:6px; background:var(--bg-elevated); border-radius:3px; overflow:hidden; margin:12px 0 4px; }
+.health-gauge-bar { height:100%; border-radius:3px; transition:width 1s ease, background .3s; }
+.health-details { margin-top:12px; display:flex; flex-direction:column; gap:6px; }
+.health-detail { display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:6px 10px; border-radius:6px; }
+.health-ok   { background:rgba(52,199,89,0.08); }
+.health-fail { background:rgba(255,59,48,0.08); color:var(--text-secondary); }
+
+/* ── Fear & Greed ─────────────────────── */
+.v4-fng-card { }
+.fng-value { font-size:36px; font-weight:300; letter-spacing:-1px; font-family:'JetBrains Mono',monospace; }
+.fng-label { font-size:13px; font-weight:600; }
+.fng-quote { font-size:12px; color:var(--text-secondary); line-height:1.5; margin-top:8px; font-style:italic; }
+
+/* ── Halving Countdown ────────────────── */
+.v4-halving-card { }
+.halving-countdown { display:flex; align-items:center; gap:8px; margin:8px 0; }
+.halving-unit { text-align:center; }
+.halving-num { font-size:28px; font-weight:300; font-family:'JetBrains Mono',monospace; color:var(--amber); display:block; }
+.halving-lbl { font-size:11px; color:var(--text-tertiary); }
+.halving-sep { font-size:24px; color:var(--text-tertiary); margin-bottom:16px; }
+.halving-item { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px; }
+.halving-year { font-weight:600; color:var(--text-secondary); }
+.halving-mult { font-weight:700; font-family:'JetBrains Mono',monospace; }
+
+/* ── Income Bars ─────────────────────── */
+.income-bars { display:flex; flex-direction:column; gap:12px; margin:16px 0; }
+.income-bar-row { display:flex; align-items:center; gap:12px; }
+.income-bar-label { font-size:13px; font-weight:500; width:56px; flex-shrink:0; }
+.income-bar-track { flex:1; height:16px; background:var(--bg-elevated); border-radius:8px; overflow:hidden; }
+.income-bar-fill { height:100%; border-radius:8px; transition:width 1s ease; }
+.income-bar-active  { background:var(--accent); }
+.income-bar-passive { background:var(--green); }
+.income-bar-val { font-family:'JetBrains Mono',monospace; font-size:13px; width:80px; text-align:right; flex-shrink:0; }
+.income-detail { display:flex; flex-direction:column; gap:4px; }
+.income-breakdown-row { display:flex; justify-content:space-between; gap:16px; font-size:13px; color:var(--text-secondary); }
+
+/* ── Coach Cards ────────────────────── */
+.coach-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+@media(max-width:768px){ .coach-cards { grid-template-columns:1fr; } }
+.coach-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; display:flex; gap:12px; align-items:flex-start; transition:all .2s; }
+.coach-card-done { opacity:0.55; }
+.coach-card-icon { font-size:24px; flex-shrink:0; }
+.coach-card-content { flex:1; }
+.coach-card-title { font-size:14px; font-weight:600; margin-bottom:4px; }
+.coach-card-desc { font-size:12px; color:var(--text-secondary); line-height:1.5; }
+.coach-done-btn { margin-top:8px; }
+
+/* ── Stress Test ─────────────────────── */
+.stress-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+.stress-metric { text-align:center; background:var(--bg-elevated); border-radius:8px; padding:12px; }
+.stress-metric-val { font-size:22px; font-weight:300; letter-spacing:-0.5px; font-family:'JetBrains Mono',monospace; }
+.stress-metric-lbl { font-size:11px; color:var(--text-tertiary); margin-top:4px; }
+.stress-alert { background:rgba(255,59,48,0.12); border:1px solid rgba(255,59,48,0.3); border-radius:8px; padding:12px; font-size:13px; margin-bottom:12px; }
+.stress-ok    { background:rgba(52,199,89,0.1); border:1px solid rgba(52,199,89,0.3); border-radius:8px; padding:12px; font-size:13px; margin-bottom:12px; }
+
+/* ── DeFi Tab ────────────────────────── */
+.defi-summary-row { display:flex; gap:24px; padding:16px 24px; background:var(--bg-elevated); border-radius:var(--radius); margin-bottom:16px; }
+.defi-stat-val { font-size:24px; font-weight:300; font-family:'JetBrains Mono',monospace; }
+.defi-stat-lbl { font-size:12px; color:var(--text-tertiary); margin-top:2px; }
+
+/* ── IL Calculator ───────────────────── */
+.il-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:12px; }
+@media(max-width:640px){ .il-grid { grid-template-columns:1fr; } }
+.il-card { background:var(--bg-elevated); border-radius:8px; padding:12px; }
+.il-card-neg { background:rgba(255,59,48,0.1); }
+.il-val { font-size:18px; font-weight:500; font-family:'JetBrains Mono',monospace; }
+.il-lbl { font-size:12px; color:var(--text-tertiary); margin-top:4px; }
+.il-alert { background:rgba(255,159,10,0.12); border:1px solid rgba(255,159,10,0.3); border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:12px; }
+.il-ok    { background:rgba(52,199,89,0.1); border:1px solid rgba(52,199,89,0.3); border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:12px; }
+
+/* ── Impermanence / Impatience ─────────── */
+.imp-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media(max-width:640px){ .imp-grid { grid-template-columns:1fr; } }
+.imp-card { background:var(--bg-elevated); border-radius:8px; padding:16px; }
+.imp-card-total { grid-column:1/-1; border:1px solid rgba(255,59,48,0.3); }
+.imp-val { font-size:20px; font-weight:500; font-family:'JetBrains Mono',monospace; }
+.imp-lbl { font-size:12px; color:var(--text-tertiary); margin-top:4px; line-height:1.4; }
+
+/* ── Correlation Matrix ──────────────── */
+.corr-summary { text-align:center; padding:16px; background:var(--bg-elevated); border-radius:8px; margin-bottom:12px; }
+.corr-score { font-size:64px; font-weight:300; letter-spacing:-2px; font-family:'JetBrains Mono',monospace; }
+.corr-score span { font-size:28px; color:var(--text-tertiary); }
+.corr-msg { font-size:14px; font-weight:600; margin-top:4px; }
+.corr-table { border-collapse:collapse; font-size:12px; }
+.corr-table th, .corr-table td { padding:6px 10px; border:1px solid var(--border); }
+.corr-table thead th { background:var(--bg-elevated); font-size:11px; }
+
+/* ── Journal ─────────────────────────── */
+.journal-entry { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px; }
+.journal-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+.journal-humeur { font-size:20px; margin-right:6px; }
+.journal-asset { font-size:15px; font-weight:600; }
+.journal-these { font-size:13px; color:var(--text-secondary); margin-top:10px; line-height:1.6; font-style:italic; background:var(--bg-elevated); border-radius:6px; padding:10px 12px; }
+
+/* ── Retirement Calculator ─────────────── */
+.retire-result { text-align:center; padding:24px; background:linear-gradient(135deg,var(--accent),var(--purple,#a855f7)); border-radius:var(--radius); color:#fff; margin-bottom:16px; }
+.retire-age { font-size:64px; font-weight:300; letter-spacing:-2px; font-family:'JetBrains Mono',monospace; }
+.retire-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+@media(max-width:640px){ .retire-grid { grid-template-columns:1fr; } }
+.retire-metric { background:var(--bg-elevated); border-radius:8px; padding:14px; text-align:center; }
+.retire-metric-val { font-size:18px; font-weight:500; font-family:'JetBrains Mono',monospace; }
+.retire-metric-lbl { font-size:11px; color:var(--text-tertiary); margin-top:4px; }
+
+/* ── Macro Calendar ──────────────────── */
+.macro-calendar { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+@media(max-width:640px){ .macro-calendar { grid-template-columns:1fr; } }
+.macro-event { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+.macro-event-label { font-size:14px; font-weight:600; margin-bottom:6px; }
+.macro-event-date  { font-size:13px; color:var(--text-secondary); }
+.macro-event-days  { font-size:20px; font-weight:300; font-family:'JetBrains Mono',monospace; margin-top:8px; }
+
+/* ── Price Flash Animation ────────────── */
+@keyframes priceFlash { 0%{background:rgba(255,159,10,0.3)} 100%{background:transparent} }
+.price-flash { animation:priceFlash 1s ease; border-radius:3px; }
+
+/* ── Stealth Button ──────────────────── */
+.stealth-active { background:rgba(255,159,10,0.2) !important; color:var(--amber) !important; }
+
+/* ── Badge extras ────────────────────── */
+.badge-defi    { background:rgba(0,199,190,0.15); color:#00c7be; }
+.badge-journal { background:rgba(168,85,247,0.15); color:#a855f7; }
+
+/* ── Mobile responsive V4 ─────────────── */
+@media(max-width:640px){
+  .stress-summary { grid-template-columns:1fr; }
+  .halving-countdown { gap:4px; }
+  .halving-num { font-size:22px; }
+  .defi-summary-row { gap:16px; }
+  .income-bar-label { width:44px; font-size:11px; }
+}

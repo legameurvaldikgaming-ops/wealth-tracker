@@ -89,6 +89,18 @@
   window.LIVE_PRICES = priceCache;
   window.BASE_PRICES = BASE_PRICES;
 
+  // After live fetch, refresh portfolio quantity values
+  var origFetchLive = fetchLive;
+  fetchLive = function () {
+    origFetchLive();
+    setTimeout(function () {
+      if (typeof renderCrypto === 'function') renderCrypto();
+      if (typeof renderDashboard === 'function') renderDashboard();
+      if (typeof renderIncome === 'function') renderIncome();
+      if (typeof renderCoach === 'function') renderCoach();
+    }, 2000);
+  };
+
   // Init ticker on DOM ready
   document.addEventListener('DOMContentLoaded', function () {
     updateTickerBar();

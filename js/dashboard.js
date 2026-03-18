@@ -117,6 +117,10 @@
     // FI update
     if (typeof updateFI === 'function') updateFI();
 
+    // V4: refresh secondary sections
+    if (typeof renderHealthScore === 'function') renderHealthScore();
+    if (typeof renderIncome === 'function') renderIncome();
+
     // Stagger reveal
     if (typeof staggerReveal === 'function') {
       staggerReveal('.metric-card', 60);
@@ -132,11 +136,19 @@
 
     ['pea', 'cto', 'crypto'].forEach(function (cat) {
       (s[cat] || []).forEach(function (p) {
-        var inv = parseFloat(p.invested) || 0;
-        var cur = parseFloat(p.current)  || 0;
+        var inv, cur;
+        if (cat === 'crypto') {
+          var qty = parseFloat(p.quantity)||0, bp = parseFloat(p.buyPrice)||0;
+          inv = qty>0&&bp>0 ? qty*bp : parseFloat(p.invested)||0;
+          cur = typeof getCryptoCurrentValue==='function' ? getCryptoCurrentValue(p) : parseFloat(p.current)||0;
+        } else {
+          var sh = parseFloat(p.shares)||0, pps = parseFloat(p.pricePerShare)||0;
+          inv = sh>0&&pps>0 ? sh*pps : parseFloat(p.invested)||0;
+          cur = typeof getETFCurrentValue==='function' ? getETFCurrentValue(p) : parseFloat(p.current)||0;
+        }
         var pnl = cur - inv;
         var pct = inv > 0 ? pnl / inv * 100 : 0;
-        rows.push({ cat: cat.toUpperCase(), name: p.name || p.asset || '—', invested: inv, current: cur, pnl: pnl, pct: pct });
+        rows.push({ cat: cat.toUpperCase(), name: p.name || p.ticker || p.asset || '—', invested: inv, current: cur, pnl: pnl, pct: pct });
       });
     });
     (s.immo || []).forEach(function (p) {
