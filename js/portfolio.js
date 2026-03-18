@@ -1,290 +1,287 @@
 /* ══════════════════════════════════════
-   PORTFOLIO.JS — CRUD complet toutes catégories
+   PORTFOLIO.JS — Full CRUD all categories
    ══════════════════════════════════════ */
 
 (function () {
+  var pendingDelete = {}; // { 'cat:id': timerRef }
 
-  var deleteTimers = {};
+  /* ── HELPERS ─────────────────────────── */
+  function pnlClass(v) { return v >= 0 ? 'td-green' : 'td-red'; }
+  function pnlSign(v)  { return v >= 0 ? '+' : ''; }
 
-  function emptyStateSVG(type) {
-    var icons = {
-      pea: '<svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="4" y="8" width="32" height="24" rx="4" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="16" x2="36" y2="16" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="12" r="1.5" fill="currentColor"/></svg>',
-      crypto: '<svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="14" stroke="currentColor" stroke-width="1.5"/><path d="M16 16h4c2.2 0 4 1.3 4 3s-1.8 3-4 3h-4m0-6v12m0-6h5c2.2 0 4 1.3 4 3s-1.8 3-4 3h-5m2-14v2m0 12v2" stroke="currentColor" stroke-width="1.5"/></svg>',
-      immo: '<svg width="40" height="40" viewBox="0 0 40 40" fill="none"><path d="M6 20l14-12 14 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="10" y="20" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="16" y="26" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>',
-      dca: '<svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="6" y="6" width="28" height="28" rx="6" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="14" x2="34" y2="14" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="10" r="1" fill="currentColor"/><circle cx="16" cy="10" r="1" fill="currentColor"/><line x1="12" y1="20" x2="24" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="26" x2="20" y2="26" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
-      default: '<svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="4" y="4" width="32" height="32" rx="6" stroke="currentColor" stroke-width="1.5"/><line x1="14" y1="28" x2="14" y2="18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="20" y1="28" x2="20" y2="12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="26" y1="28" x2="26" y2="22" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>'
-    };
-    return icons[type] || icons['default'];
+  function actionsCell(cat, id) {
+    return '<td>' +
+      '<button class="btn btn-ghost btn-sm" onclick="requestDelete(\'' + cat + '\',\'' + id + '\',this)">Supprimer</button>' +
+      '</td>';
   }
 
-  function renderEmptyState(cat, message, sub) {
-    return '<div class="empty-state">' +
-      '<div class="empty-icon" style="color:var(--text3)">' + emptyStateSVG(cat) + '</div>' +
-      '<div class="empty-text">' + (message || 'Aucune position') + '</div>' +
-      '<div class="empty-sub">' + (sub || 'Ajoute ta première position ci-dessus') + '</div>' +
-      '</div>';
-  }
-
-  /* ── DELETE with inline confirm ─── */
-  function requestDelete(cat, id, btnEl) {
-    var key = cat + '-' + id;
-    if (deleteTimers[key]) {
-      // Second click = confirm
-      clearTimeout(deleteTimers[key]);
-      delete deleteTimers[key];
+  /* ── REQUEST DELETE ──────────────────── */
+  window.requestDelete = function (cat, id, btn) {
+    var key = cat + ':' + id;
+    if (pendingDelete[key]) {
+      // Already pending — confirm immediately
+      clearTimeout(pendingDelete[key]);
+      delete pendingDelete[key];
       removePosition(cat, id);
       renderAllPortfolioTabs();
       if (typeof renderDashboard === 'function') renderDashboard();
-      showToast('Position supprimée', 'success');
       return;
     }
-    // First click: show confirm state
-    btnEl.textContent = 'Confirmer ?';
-    btnEl.classList.add('btn-danger-active');
-    deleteTimers[key] = setTimeout(function () {
-      btnEl.textContent = 'Supprimer';
-      btnEl.classList.remove('btn-danger-active');
-      delete deleteTimers[key];
+    var original = btn.textContent;
+    btn.textContent = 'Confirmer ?';
+    btn.classList.add('btn-danger');
+    btn.classList.remove('btn-ghost');
+    pendingDelete[key] = setTimeout(function () {
+      delete pendingDelete[key];
+      if (btn.parentNode) {
+        btn.textContent = original;
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-ghost');
+      }
     }, 3000);
-  }
+  };
 
-  /* ── PEA & CTO ─────────────────── */
-  function renderTable(cat) {
+  /* ── PEA / CTO TABLE ─────────────────── */
+  function renderStockTable(cat) {
+    var items = STATE[cat] || [];
     var tbody = document.getElementById(cat + '-tbody');
     if (!tbody) return;
-    var items = window.STATE[cat];
-    if (!items || !items.length) {
-      tbody.innerHTML = '<tr><td colspan="6">' + renderEmptyState(cat, 'Aucune position ' + cat.toUpperCase()) + '</td></tr>';
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-tertiary)">Aucune position. Ajoutez votre première ligne ci-dessus.</td></tr>';
       return;
     }
-    var html = '';
-    for (var i = 0; i < items.length; i++) {
-      var p = items[i];
-      var pnl = p.current - p.invested;
-      var pct = p.invested > 0 ? (pnl / p.invested * 100) : 0;
-      var cls = pnl >= 0 ? 'price-up' : 'price-down';
-      html += '<tr class="tr-transition">' +
-        '<td style="font-weight:500">' + p.name + '</td>' +
-        '<td>' + fmt(p.invested) + '</td>' +
-        '<td style="font-weight:500">' + fmt(p.current) + '</td>' +
-        '<td class="' + cls + '">' + (pnl >= 0 ? '+' : '') + fmt(pnl) + '</td>' +
-        '<td class="' + cls + '">' + fmtPct(pct) + '</td>' +
-        '<td><button class="btn-sm btn-danger" data-cat="' + cat + '" data-id="' + p.id + '">Supprimer</button></td>' +
+    tbody.innerHTML = items.map(function (p) {
+      var inv = parseFloat(p.invested) || 0;
+      var cur = parseFloat(p.current)  || 0;
+      var pnl = cur - inv;
+      var pct = inv > 0 ? (pnl / inv * 100) : 0;
+      return '<tr>' +
+        '<td><strong>' + (p.name || p.asset || '—') + '</strong></td>' +
+        '<td class="td-mono">' + fmt(inv) + '</td>' +
+        '<td class="td-mono">' + fmt(cur) + '</td>' +
+        '<td class="td-mono ' + pnlClass(pnl) + '">' + pnlSign(pnl) + fmt(pnl) + '</td>' +
+        '<td class="td-mono ' + pnlClass(pct) + '">' + pnlSign(pct) + pct.toFixed(2) + '%</td>' +
+        actionsCell(cat, p.id) +
         '</tr>';
-    }
-    tbody.innerHTML = html;
+    }).join('');
+    updateTabBadge(cat, items.length);
   }
 
-  function renderPEA() { renderTable('pea'); }
-  function renderCTO() { renderTable('cto'); }
-
-  /* ── CRYPTO ────────────────────── */
+  /* ── CRYPTO TABLE ────────────────────── */
   function renderCrypto() {
+    var items = STATE.crypto || [];
     var tbody = document.getElementById('crypto-tbody');
     if (!tbody) return;
-    var items = window.STATE.crypto;
 
-    // Tax provision
-    var totalPnl = 0;
-    for (var t = 0; t < items.length; t++) {
-      totalPnl += (items[t].current - items[t].invested);
-    }
-    var tax = Math.max(0, totalPnl * 0.3);
-    var taxEl = document.getElementById('crypto-tax-provision');
-    if (taxEl) {
-      taxEl.textContent = fmt(tax);
-      var banner = taxEl.closest('.card-title');
-      if (banner) {
-        banner.style.display = (items.length > 0) ? '' : 'none';
+    var totalCur = items.reduce(function (a, b) { return a + (parseFloat(b.current) || 0); }, 0);
+    var totalInv = items.reduce(function (a, b) { return a + (parseFloat(b.invested) || 0); }, 0);
+    var totalGain = totalCur - totalInv;
+
+    var banner = document.getElementById('crypto-tax-banner');
+    if (banner) {
+      if (totalGain > 0) {
+        var tax = totalGain * 0.30;
+        banner.innerHTML = '⚠️ Plus-value latente : <strong>' + fmt(totalGain) + '</strong> — Provision fiscale 30% : <strong>' + fmt(tax) + '</strong>';
+        banner.style.display = 'flex';
+      } else {
+        banner.style.display = 'none';
       }
     }
 
     if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="6">' + renderEmptyState('crypto', 'Aucune position Crypto') + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-tertiary)">Aucune crypto. Ajoutez votre première position.</td></tr>';
+      updateTabBadge('crypto', 0);
       return;
     }
-
-    var html = '';
-    for (var i = 0; i < items.length; i++) {
-      var p = items[i];
-      var pnl = p.current - p.invested;
-      var mult = p.invested > 0 ? (p.current / p.invested) : 1;
-      var cls = pnl >= 0 ? 'price-up' : 'price-down';
-      html += '<tr class="tr-transition">' +
-        '<td style="font-weight:500">' + p.name + '</td>' +
-        '<td>' + fmt(p.invested) + '</td>' +
-        '<td style="font-weight:500">' + fmt(p.current) + '</td>' +
-        '<td class="' + cls + '">' + (pnl >= 0 ? '+' : '') + fmt(pnl) + '</td>' +
-        '<td class="' + cls + '">' + fmtMult(mult) + '</td>' +
-        '<td><button class="btn-sm btn-danger" data-cat="crypto" data-id="' + p.id + '">Supprimer</button></td>' +
+    tbody.innerHTML = items.map(function (p) {
+      var inv = parseFloat(p.invested) || 0;
+      var cur = parseFloat(p.current)  || 0;
+      var pnl = cur - inv;
+      var pct = inv > 0 ? (pnl / inv * 100) : 0;
+      var mult = inv > 0 ? cur / inv : 1;
+      return '<tr>' +
+        '<td><strong>' + (p.name || '—') + '</strong></td>' +
+        '<td class="td-mono">' + fmt(inv) + '</td>' +
+        '<td class="td-mono">' + fmt(cur) + '</td>' +
+        '<td class="td-mono ' + pnlClass(pnl) + '">' + pnlSign(pnl) + fmt(pnl) + '</td>' +
+        '<td class="td-mono ' + pnlClass(pct) + '">' + pnlSign(pct) + pct.toFixed(2) + '%</td>' +
+        '<td class="td-mono">' + fmtMult(mult) + '</td>' +
+        actionsCell('crypto', p.id) +
         '</tr>';
-    }
-    tbody.innerHTML = html;
+    }).join('');
+    updateTabBadge('crypto', items.length);
   }
 
-  /* ── IMMO ──────────────────────── */
+  /* ── IMMO CARDS ──────────────────────── */
   function renderImmo() {
-    var wrap = document.getElementById('immo-cards-wrap');
-    if (!wrap) return;
-    var items = window.STATE.immo;
+    var items = STATE.immo || [];
+    var grid = document.getElementById('immo-grid');
+    if (!grid) return;
     if (!items.length) {
-      wrap.innerHTML = renderEmptyState('immo', 'Aucun bien', 'Ajoute ton premier investissement immobilier');
+      grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏠</div><div class="empty-state-text">Aucun bien. Ajoutez votre premier actif immobilier.</div></div>';
+      updateTabBadge('immo', 0);
       return;
     }
-    var html = '';
-    for (var i = 0; i < items.length; i++) {
-      var b = items[i];
-      var cf = b.loyer - b.mensualite;
-      var rend = b.valeur > 0 ? (b.loyer * 12 / b.valeur * 100) : 0;
-      var pv = b.valeur - b.prix;
-      html += '<div class="card" style="margin-bottom:16px">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-          '<div style="font-size:18px;font-weight:500">' + b.name + '</div>' +
-          '<button class="btn-sm btn-danger" data-cat="immo" data-id="' + b.id + '">Supprimer</button>' +
+    grid.innerHTML = items.map(function (p) {
+      var price    = parseFloat(p.price)    || 0;
+      var invested = parseFloat(p.invested) || price;
+      var loyer    = parseFloat(p.loyer)    || 0;
+      var charges  = parseFloat(p.charges)  || 0;
+      var cf = loyer - charges;
+      var yld = price > 0 ? (loyer * 12 / price * 100) : 0;
+      var gain = price - invested;
+      return '<div class="immo-card">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
+          '<div>' +
+            '<div style="font-weight:600;font-size:15px">' + (p.name || 'Bien immobilier') + '</div>' +
+            '<div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">' + (p.address || '') + '</div>' +
+          '</div>' +
+          '<button class="btn btn-ghost btn-sm" onclick="requestDelete(\'immo\',\'' + p.id + '\',this)">Supprimer</button>' +
         '</div>' +
-        '<div class="metric-grid">' +
-          '<div class="metric-card"><div class="metric-label">Valeur estimée</div><div class="metric-value" style="font-size:22px">' + fmt(b.valeur) + '</div></div>' +
-          '<div class="metric-card"><div class="metric-label">Cash-flow mensuel</div><div class="metric-value ' + (cf >= 0 ? 'delta-up' : 'delta-down') + '" style="font-size:22px">' + (cf >= 0 ? '+' : '') + fmt(cf) + '</div></div>' +
-          '<div class="metric-card"><div class="metric-label">Rendement brut</div><div class="metric-value" style="font-size:22px">' + rend.toFixed(1) + '%</div></div>' +
-          '<div class="metric-card"><div class="metric-label">Plus-value latente</div><div class="metric-value ' + (pv >= 0 ? 'delta-up' : 'delta-down') + '" style="font-size:22px">' + (pv >= 0 ? '+' : '') + fmt(pv) + '</div></div>' +
+        '<div class="immo-metrics">' +
+          '<div class="immo-metric"><div class="immo-metric-val ' + pnlClass(cf) + '">' + fmt(cf) + '</div><div class="immo-metric-lbl">Cash-flow/mois</div></div>' +
+          '<div class="immo-metric"><div class="immo-metric-val">' + yld.toFixed(2) + '%</div><div class="immo-metric-lbl">Rendement brut</div></div>' +
+          '<div class="immo-metric"><div class="immo-metric-val ' + pnlClass(gain) + '">' + pnlSign(gain) + fmt(gain) + '</div><div class="immo-metric-lbl">Plus-value</div></div>' +
         '</div>' +
       '</div>';
-    }
-    wrap.innerHTML = html;
+    }).join('');
+    updateTabBadge('immo', items.length);
   }
 
-  /* ── DCA ────────────────────────── */
+  /* ── DCA LIST + CALENDAR ─────────────── */
   function renderDCA() {
+    var items = STATE.dca || [];
     var list = document.getElementById('dca-list');
-    var totalWrap = document.getElementById('dca-total-wrap');
-    if (!list) return;
-    var items = window.STATE.dca;
-    if (!items.length) {
-      list.innerHTML = renderEmptyState('dca', 'Aucun DCA configuré');
-      if (totalWrap) totalWrap.style.display = 'none';
-      return;
+    var cal  = document.getElementById('dca-calendar');
+    if (list) {
+      if (!items.length) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-text">Aucun DCA programmé.</div></div>';
+      } else {
+        var total = items.reduce(function (a, b) { return a + (parseFloat(b.amount) || 0); }, 0);
+        list.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">Total mensuel : <strong style="color:var(--green);font-family:\'JetBrains Mono\',monospace">' + fmt(total) + '</strong></div>' +
+          items.map(function (p) {
+            return '<div class="dca-item">' +
+              '<div class="dca-item-left">' +
+                '<div class="dca-day">' + (p.day || 1) + '</div>' +
+                '<div class="dca-info">' +
+                  '<div class="dca-asset">' + (p.asset || '—') + '</div>' +
+                  '<div class="dca-meta"><span class="badge badge-' + (p.cat || 'pea').toLowerCase() + '">' + (p.cat || 'PEA') + '</span></div>' +
+                '</div>' +
+              '</div>' +
+              '<div style="display:flex;align-items:center;gap:12px">' +
+                '<div class="dca-amount">' + fmt(parseFloat(p.amount) || 0) + '</div>' +
+                '<button class="btn btn-ghost btn-sm" onclick="requestDelete(\'dca\',\'' + p.id + '\',this)">×</button>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+      }
     }
-    var catBadge = { PEA: 'badge-blue', CTO: 'badge-green', Crypto: 'badge-amber', 'Livret A': 'badge-gray' };
-    var html = '';
-    for (var i = 0; i < items.length; i++) {
-      var d = items[i];
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">' +
-        '<div style="display:flex;align-items:center;gap:12px">' +
-          '<span class="badge ' + (catBadge[d.cat] || 'badge-gray') + '">' + d.cat + '</span>' +
-          '<span style="font-weight:500">' + d.asset + '</span>' +
-          '<span style="font-size:12px;color:var(--text3)">le ' + d.day + ' du mois</span>' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:12px">' +
-          '<span style="font-size:18px;font-weight:300">' + fmt(d.amount) + '</span>' +
-          '<button class="btn-sm btn-danger" data-cat="dca" data-id="' + d.id + '">×</button>' +
-        '</div>' +
-      '</div>';
+    // Calendar view
+    if (cal) {
+      var dcaDays = {};
+      items.forEach(function (p) { dcaDays[p.day] = (dcaDays[p.day] || 0) + (parseFloat(p.amount) || 0); });
+      var html = '';
+      for (var d = 1; d <= 31; d++) {
+        var hasDca = !!dcaDays[d];
+        html += '<div class="cal-day' + (hasDca ? ' has-dca' : '') + '" title="' + (hasDca ? fmt(dcaDays[d]) : '') + '">' +
+          '<div class="cal-day-num">' + d + '</div>' +
+          (hasDca ? '<div class="cal-day-dot"></div>' : '') +
+          '</div>';
+      }
+      cal.innerHTML = html;
     }
-    list.innerHTML = html;
-    var total = 0;
-    for (var j = 0; j < items.length; j++) total += items[j].amount;
-    if (totalWrap) {
-      totalWrap.style.display = 'flex';
-      document.getElementById('dca-total').textContent = fmt(total);
-    }
+    updateTabBadge('dca', items.length);
   }
 
-  /* ── ADD handlers ──────────────── */
-  function addPos(cat) {
-    var nameEl = document.getElementById(cat + '-n');
-    var invEl = document.getElementById(cat + '-i');
-    var curEl = document.getElementById(cat + '-c');
-    var name = nameEl.value.trim();
-    var invested = parseFloat(invEl.value) || 0;
-    var current = parseFloat(curEl.value) || 0;
+  function updateTabBadge(cat, count) {
+    var badge = document.querySelector('.inner-tab[data-tab="' + cat + '"] .tab-badge');
+    if (badge) badge.textContent = count;
+  }
 
-    var valid = true;
-    if (!name) { nameEl.style.borderColor = 'var(--red)'; valid = false; } else { nameEl.style.borderColor = ''; }
-    if (!current) { curEl.style.borderColor = 'var(--red)'; valid = false; } else { curEl.style.borderColor = ''; }
-    if (!valid) return;
-
-    addPosition(cat, { name: name, invested: invested, current: current });
-    nameEl.value = '';
-    invEl.value = '';
-    curEl.value = '';
-    nameEl.focus();
+  /* ── ADD FORMS ───────────────────────── */
+  window.addPos = function (cat) {
+    var n    = document.getElementById(cat + '-n');
+    var inv  = document.getElementById(cat + '-inv');
+    var cur  = document.getElementById(cat + '-cur');
+    if (!n) return;
+    var ok = true;
+    [n, inv, cur].forEach(function (el) {
+      if (el && !el.value.trim()) { el.classList.add('error'); ok = false; }
+      else if (el) el.classList.remove('error');
+    });
+    if (!ok) return;
+    addPosition(cat, {
+      name:     n.value.trim(),
+      invested: parseFloat(inv ? inv.value : 0) || 0,
+      current:  parseFloat(cur ? cur.value : 0) || 0
+    });
+    [n, inv, cur].forEach(function (el) { if (el) { el.value = ''; el.classList.remove('error'); } });
     renderAllPortfolioTabs();
     if (typeof renderDashboard === 'function') renderDashboard();
-    showToast(name + ' ajouté au ' + cat.toUpperCase(), 'success');
-  }
+    if (typeof showToast === 'function') showToast('Position ajoutée !', 'success');
+  };
 
-  function addImmo() {
-    var nEl = document.getElementById('immo-n');
-    var pEl = document.getElementById('immo-p');
-    var vEl = document.getElementById('immo-v');
-    var lEl = document.getElementById('immo-l');
-    var mEl = document.getElementById('immo-m');
-    var name = nEl.value.trim();
-    var prix = parseFloat(pEl.value) || 0;
-    var valeur = parseFloat(vEl.value) || 0;
-    var loyer = parseFloat(lEl.value) || 0;
-    var mensualite = parseFloat(mEl.value) || 0;
-
-    var valid = true;
-    if (!name) { nEl.style.borderColor = 'var(--red)'; valid = false; } else { nEl.style.borderColor = ''; }
-    if (!valeur) { vEl.style.borderColor = 'var(--red)'; valid = false; } else { vEl.style.borderColor = ''; }
-    if (!valid) return;
-
-    addPosition('immo', { name: name, prix: prix, valeur: valeur, loyer: loyer, mensualite: mensualite });
-    nEl.value = ''; pEl.value = ''; vEl.value = ''; lEl.value = ''; mEl.value = '';
-    nEl.focus();
+  window.addImmo = function () {
+    var fields = { name: 'immo-name', price: 'immo-price', invested: 'immo-inv', loyer: 'immo-loyer', charges: 'immo-charges', address: 'immo-addr' };
+    var vals = {};
+    var required = ['immo-name', 'immo-price'];
+    var ok = true;
+    Object.keys(fields).forEach(function (k) {
+      var el = document.getElementById(fields[k]);
+      if (el) {
+        vals[k] = el.value.trim();
+        if (required.indexOf(fields[k]) !== -1 && !vals[k]) { el.classList.add('error'); ok = false; }
+        else if (el) el.classList.remove('error');
+      }
+    });
+    if (!ok) return;
+    addPosition('immo', {
+      name: vals.name, address: vals.address || '',
+      price: parseFloat(vals.price) || 0,
+      invested: parseFloat(vals.invested) || parseFloat(vals.price) || 0,
+      loyer: parseFloat(vals.loyer) || 0,
+      charges: parseFloat(vals.charges) || 0
+    });
+    Object.values(fields).forEach(function (id) { var el = document.getElementById(id); if (el) { el.value = ''; el.classList.remove('error'); } });
     renderAllPortfolioTabs();
     if (typeof renderDashboard === 'function') renderDashboard();
-    showToast(name + ' ajouté', 'success');
-  }
+    if (typeof showToast === 'function') showToast('Bien ajouté !', 'success');
+  };
 
-  function addDCA() {
-    var catEl = document.getElementById('dca-cat');
-    var assetEl = document.getElementById('dca-asset');
-    var amtEl = document.getElementById('dca-amt');
-    var dayEl = document.getElementById('dca-day');
-    var asset = assetEl.value.trim();
-    var amount = parseFloat(amtEl.value) || 0;
-    var day = parseInt(dayEl.value) || 1;
+  window.addDCA = function () {
+    var asset  = document.getElementById('dca-asset');
+    var amount = document.getElementById('dca-amount');
+    var cat    = document.getElementById('dca-cat');
+    var day    = document.getElementById('dca-day');
+    var ok = true;
+    [asset, amount].forEach(function (el) {
+      if (!el || !el.value.trim()) { if (el) el.classList.add('error'); ok = false; }
+      else el.classList.remove('error');
+    });
+    if (!ok) return;
+    addPosition('dca', {
+      asset:  asset.value.trim(),
+      amount: parseFloat(amount.value) || 0,
+      cat:    cat ? cat.value : 'PEA',
+      day:    parseInt(day ? day.value : 1) || 1
+    });
+    [asset, amount].forEach(function (el) { if (el) { el.value = ''; el.classList.remove('error'); } });
+    renderAllPortfolioTabs();
+    if (typeof showToast === 'function') showToast('DCA ajouté !', 'success');
+  };
 
-    var valid = true;
-    if (!asset) { assetEl.style.borderColor = 'var(--red)'; valid = false; } else { assetEl.style.borderColor = ''; }
-    if (!amount) { amtEl.style.borderColor = 'var(--red)'; valid = false; } else { amtEl.style.borderColor = ''; }
-    if (!valid) return;
+  /* ── RENDER ALL ──────────────────────── */
+  window.renderPEA    = function () { renderStockTable('pea'); };
+  window.renderCTO    = function () { renderStockTable('cto'); };
+  window.renderCrypto = renderCrypto;
+  window.renderImmo   = renderImmo;
+  window.renderDCA    = renderDCA;
 
-    addPosition('dca', { cat: catEl.value, asset: asset, amount: amount, day: day });
-    assetEl.value = '';
-    amtEl.value = '';
-    assetEl.focus();
-    renderDCA();
-    showToast('DCA ' + asset + ' configuré', 'success');
-  }
-
-  /* ── RENDER ALL ────────────────── */
-  function renderAllPortfolioTabs() {
-    renderPEA();
-    renderCTO();
+  window.renderAllPortfolioTabs = function () {
+    renderStockTable('pea');
+    renderStockTable('cto');
     renderCrypto();
     renderImmo();
     renderDCA();
-  }
-
-  /* ── Event delegation for delete buttons ── */
-  document.addEventListener('click', function (e) {
-    var btn = e.target;
-    if (btn.classList.contains('btn-danger') && btn.dataset.cat && btn.dataset.id) {
-      requestDelete(btn.dataset.cat, btn.dataset.id, btn);
-    }
-  });
-
-  // Expose globally
-  window.renderPEA = renderPEA;
-  window.renderCTO = renderCTO;
-  window.renderCrypto = renderCrypto;
-  window.renderImmo = renderImmo;
-  window.renderDCA = renderDCA;
-  window.renderAllPortfolioTabs = renderAllPortfolioTabs;
-  window.addPos = addPos;
-  window.addImmo = addImmo;
-  window.addDCA = addDCA;
+  };
 })();

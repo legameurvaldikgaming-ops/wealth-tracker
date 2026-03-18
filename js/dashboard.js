@@ -1,126 +1,190 @@
 /* ══════════════════════════════════════
-   DASHBOARD.JS — Assemblage dashboard principal
+   DASHBOARD.JS — Main dashboard
    ══════════════════════════════════════ */
 
 (function () {
+  var sortCol = 'pnl';
+  var sortDir = -1; // -1 = desc
 
   function getDailyQuote() {
-    return QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length];
+    var QUOTES = window.QUOTES || [];
+    return QUOTES[Math.floor(Date.now() / 86400000) % (QUOTES.length || 1)] || {};
   }
 
-  function renderDashboard() {
-    var t = getTotals();
+  /* ── RENDER DASHBOARD ────────────────── */
+  window.renderDashboard = function () {
+    var totals = typeof getTotals === 'function' ? getTotals() : { pea: 0, cto: 0, crypto: 0, immo: 0, total: 0, invested: 0, pnl: 0, pnlPct: 0 };
 
-    // Metric cards
-    var totalEl = document.getElementById('d-total');
-    var totalPctEl = document.getElementById('d-total-pct');
-    var peaEl = document.getElementById('d-pea');
-    var peaDEl = document.getElementById('d-pea-d');
-    var cryptoEl = document.getElementById('d-crypto');
-    var cryptoDEl = document.getElementById('d-crypto-d');
-    var immoEl = document.getElementById('d-immo');
-    var immoDEl = document.getElementById('d-immo-d');
-
-    if (totalEl) totalEl.textContent = fmt(t.total);
-    if (totalPctEl) {
-      totalPctEl.textContent = fmtPct(t.pnlPct);
-      totalPctEl.className = t.pnlPct >= 0 ? 'delta-up' : 'delta-down';
-    }
-    if (peaEl) peaEl.textContent = fmt(t.pea);
-    if (peaDEl) peaDEl.textContent = STATE.pea.length + ' position' + (STATE.pea.length !== 1 ? 's' : '');
-    if (cryptoEl) cryptoEl.textContent = fmt(t.crypto);
-    if (cryptoDEl) cryptoDEl.textContent = STATE.crypto.length + ' position' + (STATE.crypto.length !== 1 ? 's' : '');
-    if (immoEl) immoEl.textContent = fmt(t.immo);
-    if (immoDEl) immoDEl.textContent = STATE.immo.length + ' bien' + (STATE.immo.length !== 1 ? 's' : '');
-
-    // Donut chart
-    var donutData = [];
-    if (t.pea > 0) donutData.push({ value: t.pea, color: '#0071e3', label: 'PEA' });
-    if (t.cto > 0) donutData.push({ value: t.cto, color: '#34c759', label: 'CTO' });
-    if (t.crypto > 0) donutData.push({ value: t.crypto, color: '#ff9f0a', label: 'Crypto' });
-    if (t.immo > 0) donutData.push({ value: t.immo, color: '#af52de', label: 'Immo' });
-    drawDonut('donutChart', donutData);
-
-    // Legend
-    var legend = document.getElementById('donut-legend');
-    if (legend) {
-      if (donutData.length) {
-        var lhtml = '';
-        for (var i = 0; i < donutData.length; i++) {
-          var d = donutData[i];
-          var pct = t.total > 0 ? (d.value / t.total * 100).toFixed(0) : 0;
-          lhtml += '<div class="legend-item"><span class="legend-dot" style="background:' + d.color + '"></span><span>' + d.label + ' — ' + pct + '%</span></div>';
-        }
-        legend.innerHTML = lhtml;
-      } else {
-        legend.innerHTML = '<div style="font-size:13px;color:var(--text3)">Ajoute des positions</div>';
+    // Metric cards via animateCounter
+    function updateMetric(id, val, prev) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (typeof animateCounter === 'function' && typeof fmt === 'function') {
+        animateCounter(el, prev || 0, val, 800, fmt);
+      } else if (typeof fmt === 'function') {
+        el.textContent = fmt(val);
       }
+      if (typeof pulseElement === 'function') pulseElement(el);
+    }
+
+    updateMetric('metric-total',    totals.total);
+    updateMetric('metric-invested', totals.invested);
+    updateMetric('metric-pnl',      totals.pnl);
+    updateMetric('metric-pea',      totals.pea);
+    updateMetric('metric-cto',      totals.cto);
+    updateMetric('metric-crypto',   totals.crypto);
+    updateMetric('metric-immo',     totals.immo);
+
+    var pnlEl = document.getElementById('metric-pnl-pct');
+    if (pnlEl && typeof fmtPct === 'function') {
+      pnlEl.textContent = fmtPct(totals.pnlPct);
+      pnlEl.className = totals.pnlPct >= 0 ? 'up' : 'down';
+    }
+
+    // Nav total
+    var navTotal = document.getElementById('nav-total');
+    if (navTotal && typeof fmtCompact === 'function') {
+      navTotal.textContent = fmtCompact(totals.total);
+    }
+
+    // Sparklines on metric cards
+    if (typeof generateSparkData === 'function' && typeof drawSparkline === 'function') {
+      var sparkDefs = [
+        { canvas: 'spark-total',    base: totals.total    || 50000, color: '#3b82f6' },
+        { canvas: 'spark-pea',      base: totals.pea      || 20000, color: '#3b82f6' },
+        { canvas: 'spark-cto',      base: totals.cto      || 10000, color: '#a855f7' },
+        { canvas: 'spark-crypto',   base: totals.crypto   || 5000,  color: '#f59e0b' },
+        { canvas: 'spark-immo',     base: totals.immo     || 0,     color: '#22c55e' },
+        { canvas: 'spark-invested', base: totals.invested || 30000, color: '#22c55e' }
+      ];
+      sparkDefs.forEach(function (def) {
+        var canvas = document.getElementById(def.canvas);
+        if (canvas && def.base > 0) {
+          drawSparkline(canvas, generateSparkData(def.base, 12, 0.03), def.color);
+        }
+      });
+    }
+
+    // Donut
+    if (typeof drawDonut === 'function') {
+      var donutData = [
+        { value: totals.pea,    color: '#3b82f6', label: 'PEA' },
+        { value: totals.cto,    color: '#a855f7', label: 'CTO' },
+        { value: totals.crypto, color: '#f59e0b', label: 'Crypto' },
+        { value: totals.immo,   color: '#22c55e', label: 'Immo' }
+      ].filter(function (d) { return d.value > 0; });
+      if (!donutData.length) donutData = [{ value: 1, color: '#333', label: '' }];
+      drawDonut('donut-chart', donutData);
+
+      // Legend
+      var legend = document.getElementById('donut-legend');
+      if (legend) {
+        var total = donutData.reduce(function (a, b) { return a + b.value; }, 0);
+        legend.innerHTML = donutData.map(function (d) {
+          var pct = total > 0 ? (d.value / total * 100).toFixed(1) : '0.0';
+          return '<div class="legend-item">' +
+            '<div class="legend-dot" style="background:' + d.color + '"></div>' +
+            '<span class="legend-lbl">' + d.label + '</span>' +
+            '<span class="legend-val">' + (typeof fmt === 'function' ? fmt(d.value) : d.value) + '</span>' +
+            '<span class="legend-pct">' + pct + '%</span>' +
+          '</div>';
+        }).join('');
+      }
+
+      // Donut center
+      var donutTot = document.getElementById('donut-total');
+      if (donutTot && typeof fmt === 'function') donutTot.textContent = fmt(totals.total);
     }
 
     // Projection
-    drawProjection('projCanvas', t.total);
+    if (typeof drawProjection === 'function') {
+      drawProjection('proj-chart', totals.total);
+    }
+
+    // Daily quote
+    var q = getDailyQuote();
+    var qEl = document.getElementById('dash-quote-text');
+    if (qEl && q.text) {
+      qEl.textContent = q.text;
+      if (typeof revealWords === 'function') revealWords(qEl);
+    }
+    var qAuth = document.getElementById('dash-quote-author');
+    if (qAuth) qAuth.textContent = q.author ? '— ' + q.author : '';
 
     // All positions table
     renderAllTable();
 
-    // Quote
-    var q = getDailyQuote();
-    var quoteTextEl = document.getElementById('dash-quote-text');
-    var quoteAuthorEl = document.getElementById('dash-quote-author');
-    if (quoteTextEl) quoteTextEl.textContent = q.text;
-    if (quoteAuthorEl) quoteAuthorEl.textContent = '— ' + q.author;
-
-    // FI progress
+    // FI update
     if (typeof updateFI === 'function') updateFI();
-  }
 
+    // Stagger reveal
+    if (typeof staggerReveal === 'function') {
+      staggerReveal('.metric-card', 60);
+    }
+  };
+
+  /* ── ALL POSITIONS TABLE ─────────────── */
   function renderAllTable() {
     var tbody = document.getElementById('all-tbody');
     if (!tbody) return;
+    var s = window.STATE || {};
+    var rows = [];
 
-    var all = [];
-    var cats = ['pea', 'cto', 'crypto'];
-    for (var c = 0; c < cats.length; c++) {
-      var items = STATE[cats[c]];
-      for (var i = 0; i < items.length; i++) {
-        all.push({ name: items[i].name, invested: items[i].invested, current: items[i].current, cat: cats[c].toUpperCase() === 'CRYPTO' ? 'Crypto' : cats[c].toUpperCase() });
-      }
-    }
-    for (var j = 0; j < STATE.immo.length; j++) {
-      var b = STATE.immo[j];
-      all.push({ name: b.name, invested: b.prix, current: b.valeur, cat: 'Immo' });
-    }
+    ['pea', 'cto', 'crypto'].forEach(function (cat) {
+      (s[cat] || []).forEach(function (p) {
+        var inv = parseFloat(p.invested) || 0;
+        var cur = parseFloat(p.current)  || 0;
+        var pnl = cur - inv;
+        var pct = inv > 0 ? pnl / inv * 100 : 0;
+        rows.push({ cat: cat.toUpperCase(), name: p.name || p.asset || '—', invested: inv, current: cur, pnl: pnl, pct: pct });
+      });
+    });
+    (s.immo || []).forEach(function (p) {
+      var inv = parseFloat(p.invested) || 0;
+      var cur = parseFloat(p.price)    || 0;
+      var pnl = cur - inv;
+      var pct = inv > 0 ? pnl / inv * 100 : 0;
+      rows.push({ cat: 'IMMO', name: p.name || 'Immobilier', invested: inv, current: cur, pnl: pnl, pct: pct });
+    });
 
-    if (!all.length) {
-      tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">' +
-        '<div class="empty-icon" style="color:var(--text3)"><svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="4" y="4" width="32" height="32" rx="6" stroke="currentColor" stroke-width="1.5"/><line x1="14" y1="28" x2="14" y2="18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="20" y1="28" x2="20" y2="12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="26" y1="28" x2="26" y2="22" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></div>' +
-        '<div class="empty-text">Aucune position</div>' +
-        '<div class="empty-sub">Ajoute tes actifs dans l\'onglet Portfolio</div>' +
-        '</div></td></tr>';
+    // Sort
+    rows.sort(function (a, b) { return (a[sortCol] - b[sortCol]) * sortDir; });
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-tertiary)">Aucune position. Commencez par ajouter des actifs dans Portfolio.</td></tr>';
       return;
     }
-
-    var catBadge = { PEA: 'badge-blue', CTO: 'badge-green', Crypto: 'badge-amber', Immo: 'badge-purple' };
-    var html = '';
-    for (var k = 0; k < all.length; k++) {
-      var p = all[k];
-      var pnl = p.current - (p.invested || 0);
-      var pct = p.invested > 0 ? (pnl / p.invested * 100) : 0;
-      var cls = pnl >= 0 ? 'price-up' : 'price-down';
-      html += '<tr class="tr-transition">' +
-        '<td style="font-weight:500">' + p.name + '</td>' +
-        '<td><span class="badge ' + (catBadge[p.cat] || 'badge-gray') + '">' + p.cat + '</span></td>' +
-        '<td style="font-weight:500">' + fmt(p.current) + '</td>' +
-        '<td>' + (p.invested ? fmt(p.invested) : '—') + '</td>' +
-        '<td class="' + cls + '">' + (p.invested ? (pnl >= 0 ? '+' : '') + fmt(pnl) : '') + '</td>' +
-        '<td class="' + cls + '">' + (p.invested ? fmtPct(pct) : '') + '</td>' +
-        '</tr>';
-    }
-    tbody.innerHTML = html;
+    tbody.innerHTML = rows.map(function (r) {
+      var pnlClass = r.pnl >= 0 ? 'td-green' : 'td-red';
+      return '<tr>' +
+        '<td><span class="badge badge-' + r.cat.toLowerCase() + '">' + r.cat + '</span> ' + r.name + '</td>' +
+        '<td class="td-mono">' + (typeof fmt === 'function' ? fmt(r.invested) : r.invested) + '</td>' +
+        '<td class="td-mono">' + (typeof fmt === 'function' ? fmt(r.current)  : r.current)  + '</td>' +
+        '<td class="td-mono ' + pnlClass + '">' + (r.pnl >= 0 ? '+' : '') + (typeof fmt === 'function' ? fmt(r.pnl) : r.pnl) + '</td>' +
+        '<td class="td-mono ' + pnlClass + '">' + (r.pct >= 0 ? '+' : '') + r.pct.toFixed(2) + '%</td>' +
+      '</tr>';
+    }).join('');
   }
 
-  // Expose globally
-  window.getDailyQuote = getDailyQuote;
-  window.renderDashboard = renderDashboard;
-  window.renderAllTable = renderAllTable;
+  /* ── SORTABLE TABLE ──────────────────── */
+  document.addEventListener('DOMContentLoaded', function () {
+    var headers = document.querySelectorAll('#all-table thead th[data-sort]');
+    headers.forEach(function (th) {
+      th.addEventListener('click', function () {
+        var col = th.dataset.sort;
+        if (sortCol === col) { sortDir *= -1; }
+        else { sortCol = col; sortDir = -1; }
+        headers.forEach(function (h) {
+          var ind = h.querySelector('.sort-indicator');
+          if (ind) { ind.textContent = ''; ind.classList.remove('active'); }
+        });
+        var ind = th.querySelector('.sort-indicator');
+        if (ind) {
+          ind.textContent = sortDir === -1 ? ' ↓' : ' ↑';
+          ind.classList.add('active');
+        }
+        renderAllTable();
+      });
+    });
+  });
 })();

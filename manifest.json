@@ -1,0 +1,14 @@
+{
+  "name": "WEALTH — Tableau de bord patrimonial",
+  "short_name": "WEALTH",
+  "description": "Tableau de bord patrimonial premium — PEA, CTO, Crypto, Immobilier",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "any",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "assets/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

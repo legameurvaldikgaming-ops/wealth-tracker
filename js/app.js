@@ -1,273 +1,193 @@
 /* ══════════════════════════════════════
-   APP.JS — Navigation SPA + initialisation globale
+   APP.JS — SPA navigation + global init
    ══════════════════════════════════════ */
 
 (function () {
 
-  /* ── NAVIGATION ────────────────── */
-  function showPage(name) {
-    var pages = document.querySelectorAll('.page');
-    for (var i = 0; i < pages.length; i++) pages[i].classList.remove('active');
-
-    var links = document.querySelectorAll('.nav-link');
-    for (var j = 0; j < links.length; j++) links[j].classList.remove('active');
-
+  /* ── PAGE NAVIGATION ─────────────────── */
+  window.showPage = function (name) {
+    document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); });
     var target = document.getElementById('page-' + name);
-    if (target) {
-      target.classList.add('active');
-      // Re-trigger animation
-      target.style.animation = 'none';
-      target.offsetHeight; // force reflow
-      target.style.animation = '';
-    }
+    if (target) target.classList.add('active');
 
-    // Activate matching nav link
-    for (var k = 0; k < links.length; k++) {
-      if (links[k].dataset.page === name) {
-        links[k].classList.add('active');
-        break;
-      }
-    }
+    document.querySelectorAll('.nav-link').forEach(function (l) {
+      l.classList.toggle('active', l.dataset.page === name);
+    });
+    document.querySelectorAll('.drawer-link').forEach(function (l) {
+      l.classList.toggle('active', l.dataset.page === name);
+    });
+    updateNavPill();
 
-    // Render page content
-    switch (name) {
-      case 'dashboard': renderDashboard(); break;
-      case 'portfolio': renderAllPortfolioTabs(); break;
-      case 'catalog': filterAndRender(); break;
-      case 'simulator': setTimeout(function () { updateSimulator(); }, 50); break;
-      case 'roadmap': renderRoadmap(); updateFI(); break;
-      case 'mindset': renderMindset(); break;
-    }
+    // Render page
+    if (name === 'dashboard'  && typeof renderDashboard       === 'function') renderDashboard();
+    if (name === 'portfolio')  renderAllPortfolioTabsIfExists();
+    if (name === 'simulator'  && typeof updateSimulator        === 'function') setTimeout(updateSimulator, 50);
+    if (name === 'catalog'    && typeof filterAndRender        === 'function') filterAndRender();
+    if (name === 'mindset'    && typeof renderMindset          === 'function') renderMindset();
+    if (name === 'roadmap'    && typeof renderRoadmap          === 'function') renderRoadmap();
 
-    // Scroll to top
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    closeDrawer();
+  };
 
-    // Close mobile menu if open
-    var navLinks = document.getElementById('nav-links');
-    if (navLinks) navLinks.classList.remove('mobile-open');
+  function renderAllPortfolioTabsIfExists() {
+    if (typeof renderAllPortfolioTabs === 'function') renderAllPortfolioTabs();
   }
 
-  /* ── CLOCK ─────────────────────── */
+  /* ── NAV PILL ────────────────────────── */
+  function updateNavPill() {
+    var pill = document.getElementById('nav-pill');
+    if (!pill) return;
+    var active = document.querySelector('.nav-link.active');
+    if (!active) { pill.style.opacity = '0'; return; }
+    pill.style.opacity = '1';
+    pill.style.left  = active.offsetLeft + 'px';
+    pill.style.width = active.offsetWidth + 'px';
+  }
+
+  /* ── INNER TAB SWITCHING ─────────────── */
+  window.showInner = function (name, el) {
+    document.querySelectorAll('.inner-pane').forEach(function (p) { p.classList.remove('active'); });
+    var target = document.getElementById('pane-' + name);
+    if (target) target.classList.add('active');
+
+    document.querySelectorAll('.inner-tab').forEach(function (t) { t.classList.remove('active'); });
+    if (el) el.classList.add('active');
+    else {
+      var t = document.querySelector('.inner-tab[data-tab="' + name + '"]');
+      if (t) t.classList.add('active');
+    }
+  };
+
+  /* ── CLOCK ───────────────────────────── */
   function updateClock() {
-    var el = document.getElementById('live-time');
-    if (el) {
-      var now = new Date();
-      el.textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    }
+    var el = document.getElementById('nav-clock');
+    if (!el) return;
+    var now = new Date();
+    var hh = String(now.getHours()).padStart(2, '0');
+    var mm = String(now.getMinutes()).padStart(2, '0');
+    var ss = String(now.getSeconds()).padStart(2, '0');
+    el.textContent = hh + ':' + mm + ':' + ss;
   }
+  setInterval(updateClock, 1000);
+  updateClock();
 
-  /* ── THEME ─────────────────────── */
-  function toggleTheme() {
-    var isDark = document.body.dataset.theme === 'dark';
-    document.body.dataset.theme = isDark ? 'light' : 'dark';
-    localStorage.setItem('wealth_theme', document.body.dataset.theme);
-
-    var btn = document.getElementById('theme-btn');
-    if (btn) btn.textContent = isDark ? '\uD83C\uDF19' : '\u2600\uFE0F';
-
-    // Redraw charts with new theme colors
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (document.getElementById('page-simulator') && document.getElementById('page-simulator').classList.contains('active')) {
-      if (typeof updateSimulator === 'function') updateSimulator();
-    }
-  }
-
-  function loadTheme() {
-    var saved = localStorage.getItem('wealth_theme');
-    if (saved) {
-      document.body.dataset.theme = saved;
-    }
-    var btn = document.getElementById('theme-btn');
-    if (btn) {
-      btn.textContent = document.body.dataset.theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
-    }
-  }
-
-  /* ── EXPORT / IMPORT ───────────── */
-  function exportData() {
-    var date = new Date().toISOString().slice(0, 10);
-    var blob = new Blob([JSON.stringify(STATE, null, 2)], { type: 'application/json' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'wealth_backup_' + date + '.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    showToast('Backup exporté', 'success');
-  }
-
-  function importData(input) {
-    var file = input.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      try {
-        var data = JSON.parse(e.target.result);
-        // Validate structure
-        var keys = ['pea', 'cto', 'crypto', 'immo', 'dca'];
-        for (var i = 0; i < keys.length; i++) {
-          if (data[keys[i]] && Array.isArray(data[keys[i]])) {
-            STATE[keys[i]] = data[keys[i]];
-          }
-        }
-        saveState();
-        renderDashboard();
-        renderAllPortfolioTabs();
-        showToast('Données importées avec succès', 'success');
-      } catch (err) {
-        showToast('Fichier invalide', 'error');
-      }
-    };
-    reader.readAsText(file);
-    // Reset file input so same file can be re-imported
-    input.value = '';
-  }
-
-  /* ── TOAST NOTIFICATIONS ───────── */
-  function showToast(message, type) {
-    type = type || 'info';
+  /* ── TOAST ───────────────────────────── */
+  window.showToast = function (message, type) {
     var container = document.getElementById('toast-container');
     if (!container) {
       container = document.createElement('div');
       container.id = 'toast-container';
       document.body.appendChild(container);
     }
-
     var toast = document.createElement('div');
-    toast.className = 'toast toast-' + type;
+    toast.className = 'toast toast-' + (type || 'info');
     toast.textContent = message;
     container.appendChild(toast);
-
-    // Trigger animation
-    toast.offsetHeight;
-    toast.classList.add('toast-visible');
-
+    setTimeout(function () { toast.classList.add('show'); }, 10);
     setTimeout(function () {
-      toast.classList.remove('toast-visible');
-      setTimeout(function () { toast.remove(); }, 300);
-    }, 3000);
-  }
+      toast.classList.remove('show');
+      toast.classList.add('hide');
+      setTimeout(function () { toast.remove(); }, 350);
+    }, 3200);
+  };
 
-  /* ── INNER TABS (Portfolio) ────── */
-  function showInner(name, el) {
-    var panels = ['pea', 'cto', 'crypto', 'immo', 'dca'];
-    for (var i = 0; i < panels.length; i++) {
-      var panel = document.getElementById('inner-' + panels[i]);
-      if (panel) panel.style.display = 'none';
-    }
-    var tabs = document.querySelectorAll('.inner-tab');
-    for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('active');
+  /* ── EXPORT / IMPORT ─────────────────── */
+  window.exportData = function () {
+    var data = JSON.stringify(window.STATE, null, 2);
+    var blob = new Blob([data], { type: 'application/json' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    var date = new Date().toISOString().slice(0, 10);
+    a.href = url; a.download = 'wealth_backup_' + date + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Export réussi !', 'success');
+  };
 
-    var target = document.getElementById('inner-' + name);
-    if (target) target.style.display = 'block';
-    if (el) el.classList.add('active');
-  }
-
-  /* ── HAMBURGER MENU ────────────── */
-  function toggleMobileMenu() {
-    var navLinks = document.getElementById('nav-links');
-    if (navLinks) navLinks.classList.toggle('mobile-open');
-  }
-
-  /* ── INIT ──────────────────────── */
-  document.addEventListener('DOMContentLoaded', function () {
-    // 1. Load theme
-    loadTheme();
-
-    // 2. Start clock
-    updateClock();
-    setInterval(updateClock, 1000);
-
-    // 3. STATE already loaded by state.js
-
-    // 4. Show dashboard
-    showPage('dashboard');
-
-    // 5. Nav links
-    var navLinks = document.querySelectorAll('.nav-link');
-    for (var i = 0; i < navLinks.length; i++) {
-      navLinks[i].addEventListener('click', (function (link) {
-        return function () {
-          showPage(link.dataset.page);
+  window.importData = function (input) {
+    var file = input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var data = JSON.parse(e.target.result);
+        if (!data.pea && !data.crypto && !data.immo) throw new Error('Format invalide');
+        window.STATE = {
+          pea:    data.pea    || [],
+          cto:    data.cto    || [],
+          crypto: data.crypto || [],
+          immo:   data.immo   || [],
+          dca:    data.dca    || []
         };
-      })(navLinks[i]));
-    }
+        if (typeof saveState === 'function') saveState();
+        if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof renderAllPortfolioTabs === 'function') renderAllPortfolioTabs();
+        showToast('Import réussi !', 'success');
+      } catch (err) {
+        showToast('Erreur : fichier invalide', 'error');
+      }
+    };
+    reader.readAsText(file);
+    input.value = '';
+  };
 
-    // 6. Portfolio form buttons
-    var addPeaBtn = document.getElementById('btn-add-pea');
-    if (addPeaBtn) addPeaBtn.addEventListener('click', function () { addPos('pea'); });
-    var addCtoBtn = document.getElementById('btn-add-cto');
-    if (addCtoBtn) addCtoBtn.addEventListener('click', function () { addPos('cto'); });
-    var addCryptoBtn = document.getElementById('btn-add-crypto');
-    if (addCryptoBtn) addCryptoBtn.addEventListener('click', function () { addPos('crypto'); });
-    var addImmoBtn = document.getElementById('btn-add-immo');
-    if (addImmoBtn) addImmoBtn.addEventListener('click', function () { addImmo(); });
-    var addDcaBtn = document.getElementById('btn-add-dca');
-    if (addDcaBtn) addDcaBtn.addEventListener('click', function () { addDCA(); });
-
-    // Inner tabs
-    var innerTabs = document.querySelectorAll('.inner-tab');
-    for (var t = 0; t < innerTabs.length; t++) {
-      innerTabs[t].addEventListener('click', (function (tab) {
-        return function () { showInner(tab.dataset.tab, tab); };
-      })(innerTabs[t]));
-    }
-
-    // 7. Catalog search + filters
-    var catalogSearch = document.getElementById('catalog-search');
-    if (catalogSearch) {
-      catalogSearch.addEventListener('input', function () { filterCatalog(); });
-    }
-    var filterPills = document.querySelectorAll('#cat-filters .pill');
-    for (var f = 0; f < filterPills.length; f++) {
-      filterPills[f].addEventListener('click', (function (pill) {
-        return function () { filterCat(pill.dataset.cat, pill); };
-      })(filterPills[f]));
-    }
-
-    // 8. Simulator sliders
-    var simInputs = ['sim-dca', 'sim-years', 'sim-rate', 'sim-initial'];
-    for (var s = 0; s < simInputs.length; s++) {
-      var el = document.getElementById(simInputs[s]);
-      if (el) el.addEventListener('input', function () { updateSimulator(); });
-    }
-
-    // 9. Roadmap FI inputs
-    var fiSpend = document.getElementById('fi-spend');
-    var fiSpread = document.getElementById('fi-spread');
-    if (fiSpend) fiSpend.addEventListener('input', debouncedUpdateFI);
-    if (fiSpread) fiSpread.addEventListener('input', debouncedUpdateFI);
-
-    // Export/Import
-    var exportBtn = document.getElementById('btn-export');
-    if (exportBtn) exportBtn.addEventListener('click', exportData);
-    var importFile = document.getElementById('import-file');
-    if (importFile) importFile.addEventListener('change', function () { importData(this); });
-    var importBtn = document.getElementById('btn-import');
-    if (importBtn) importBtn.addEventListener('click', function () { document.getElementById('import-file').click(); });
-
-    // Theme button
-    var themeBtn = document.getElementById('theme-btn');
-    if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
-
-    // Hamburger
-    var hamburger = document.getElementById('hamburger-btn');
-    if (hamburger) hamburger.addEventListener('click', toggleMobileMenu);
-
-    // Dashboard manage button
-    var manageBtn = document.getElementById('btn-manage-portfolio');
-    if (manageBtn) {
-      manageBtn.addEventListener('click', function () { showPage('portfolio'); });
-    }
-
-    // Render all portfolio tabs on init
-    renderAllPortfolioTabs();
+  /* ── SCROLL HANDLER ──────────────────── */
+  window.addEventListener('scroll', function () {
+    var nav = document.getElementById('main-nav');
+    if (nav) nav.classList.toggle('scrolled', window.scrollY > 10);
+    var btn = document.getElementById('scroll-top');
+    if (btn) btn.classList.toggle('visible', window.scrollY > 300);
   });
 
-  // Expose globals
-  window.showPage = showPage;
-  window.toggleTheme = toggleTheme;
-  window.showInner = showInner;
-  window.exportData = exportData;
-  window.importData = importData;
-  window.showToast = showToast;
+  /* ── MOBILE DRAWER ───────────────────── */
+  function openDrawer() {
+    var drawer  = document.getElementById('nav-drawer');
+    var overlay = document.getElementById('nav-overlay');
+    if (drawer)  drawer.classList.add('open');
+    if (overlay) overlay.classList.add('open');
+  }
+  function closeDrawer() {
+    var drawer  = document.getElementById('nav-drawer');
+    var overlay = document.getElementById('nav-overlay');
+    if (drawer)  drawer.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+  }
+  window.closeDrawer = closeDrawer;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var hamburger = document.getElementById('hamburger');
+    if (hamburger) hamburger.addEventListener('click', openDrawer);
+    var navOverlay = document.getElementById('nav-overlay');
+    if (navOverlay) navOverlay.addEventListener('click', closeDrawer);
+
+    // Scroll to top
+    var scrollBtn = document.getElementById('scroll-top');
+    if (scrollBtn) scrollBtn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+
+    // Init tilt
+    if (typeof initTilt === 'function') initTilt('.metric-card');
+
+    // Service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(function () {});
+    }
+
+    // Boot page
+    showPage('dashboard');
+
+    // Onboarding
+    if (typeof startOnboarding === 'function') {
+      setTimeout(startOnboarding, 600);
+    }
+  });
+
+  /* ── THEME PANEL ─────────────────────── */
+  window.toggleThemePanel = function () {
+    var panel = document.getElementById('theme-panel');
+    if (!panel) return;
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open') && typeof renderThemePanel === 'function') renderThemePanel();
+  };
+
 })();

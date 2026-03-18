@@ -1,83 +1,106 @@
 /* ══════════════════════════════════════
-   SIMULATOR.JS — Calculs + rendu simulateur
+   SIMULATOR.JS — FV calculator + Lombard
    ══════════════════════════════════════ */
 
 (function () {
 
-  function computeFV(pmt, annualRate, months, pv) {
+  /* ── COMPOUND FV ─────────────────────── */
+  window.computeFV = function (pmt, annualRate, months, pv) {
+    pv = pv || 0;
     var mr = annualRate / 12;
     if (mr === 0) return pv + pmt * months;
-    return pv * Math.pow(1 + mr, months) + pmt * ((Math.pow(1 + mr, months) - 1) / mr);
-  }
+    return pv * Math.pow(1 + mr, months) + pmt * (Math.pow(1 + mr, months) - 1) / mr;
+  };
 
-  function updateSimulator() {
-    var dcaEl = document.getElementById('sim-dca');
-    var yearsEl = document.getElementById('sim-years');
-    var rateEl = document.getElementById('sim-rate');
-    var initEl = document.getElementById('sim-initial');
-    if (!dcaEl) return;
+  function getSliderEl(id) { return document.getElementById(id); }
+  function getVal(id) { var el = getSliderEl(id); return el ? parseFloat(el.value) || 0 : 0; }
+  function setLabel(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
 
-    var dca = parseFloat(dcaEl.value) || 600;
-    var years = parseInt(yearsEl.value) || 10;
-    var rate = (parseFloat(rateEl.value) || 10) / 100;
-    var initial = parseFloat(initEl.value) || 0;
-    var n = years * 12;
+  window.updateSimulator = function () {
+    var dca     = getVal('sim-dca');
+    var rate    = getVal('sim-rate') / 100;
+    var years   = getVal('sim-years');
+    var initial = getVal('sim-initial');
+    var months  = years * 12;
 
-    var final_ = computeFV(dca, rate, n, initial);
-    var invested = dca * n + initial;
-    var gains = final_ - invested;
-    var mult = invested > 0 ? final_ / invested : 1;
+    setLabel('sim-dca-val',     dca.toLocaleString('fr-FR') + '\u00a0€/mois');
+    setLabel('sim-rate-val',    (rate * 100).toFixed(1) + '%/an');
+    setLabel('sim-years-val',   years + '\u00a0ans');
+    setLabel('sim-initial-val', initial.toLocaleString('fr-FR') + '\u00a0€');
 
-    document.getElementById('sim-final').textContent = fmt(final_);
-    document.getElementById('sim-inv').textContent = fmt(invested);
-    document.getElementById('sim-gains').textContent = fmt(gains);
-    document.getElementById('sim-mult').textContent = fmtMult(mult);
+    var fv      = computeFV(dca, rate, months, initial);
+    var inv     = initial + dca * months;
+    var gain    = fv - inv;
+    var mult    = inv > 0 ? fv / inv : 1;
 
-    // Update slider display values
-    var dcaValEl = document.getElementById('sim-dca-val');
-    var yearsValEl = document.getElementById('sim-years-val');
-    var rateValEl = document.getElementById('sim-rate-val');
-    if (dcaValEl) dcaValEl.textContent = dca + '€';
-    if (yearsValEl) yearsValEl.textContent = years + ' ans';
-    if (rateValEl) rateValEl.textContent = (rate * 100).toFixed(1).replace('.0', '') + '%';
+    setLabel('sim-result-fv',   Math.round(fv).toLocaleString('fr-FR') + '\u00a0€');
+    setLabel('sim-result-inv',  Math.round(inv).toLocaleString('fr-FR') + '\u00a0€');
+    setLabel('sim-result-gain', (gain >= 0 ? '+' : '') + Math.round(gain).toLocaleString('fr-FR') + '\u00a0€');
+    setLabel('sim-result-mult', mult.toFixed(2) + 'x');
 
-    // Draw chart
-    drawSimulator('simCanvas', dca, rate, years, initial);
-
-    // Build scenarios table
-    buildScenarios();
-  }
-
-  function buildScenarios() {
-    var tbody = document.getElementById('scenarios-tbody');
-    if (!tbody) return;
-
-    var scenarios = [
-      { label: 'Conservateur', dca: 300, rate: 0.07, initial: 0 },
-      { label: 'Base (toi)', dca: 600, rate: 0.10, initial: 0 },
-      { label: 'Optimiste', dca: 1000, rate: 0.12, initial: 0 },
-      { label: 'Freelance', dca: 3000, rate: 0.12, initial: 0 },
-      { label: 'Post-crypto 250k', dca: 1500, rate: 0.12, initial: 175000 }
-    ];
-
-    var html = '';
-    for (var i = 0; i < scenarios.length; i++) {
-      var s = scenarios[i];
-      html += '<tr>' +
-        '<td style="font-weight:500">' + s.label + '</td>' +
-        '<td>' + fmt(s.dca) + '</td>' +
-        '<td>' + (s.rate * 100).toFixed(0) + '%</td>' +
-        '<td>' + fmt(computeFV(s.dca, s.rate, 5 * 12, s.initial)) + '</td>' +
-        '<td style="font-weight:500">' + fmt(computeFV(s.dca, s.rate, 10 * 12, s.initial)) + '</td>' +
-        '<td class="price-up">' + fmt(computeFV(s.dca, s.rate, 20 * 12, s.initial)) + '</td>' +
-        '<td class="delta-up" style="font-weight:500">' + fmt(computeFV(s.dca, s.rate, 30 * 12, s.initial)) + '</td>' +
-        '</tr>';
+    if (typeof drawSimulator === 'function') {
+      drawSimulator('sim-chart', dca, rate, months, initial);
     }
-    tbody.innerHTML = html;
+
+    buildScenarios(dca, years, initial);
+    updateLombard();
+  };
+
+  function buildScenarios(dca, years, initial) {
+    var container = document.getElementById('scenarios-grid');
+    if (!container) return;
+    var rates = [0.04, 0.07, 0.10, 0.12, 0.15];
+    var colors = ['var(--text-secondary)', 'var(--accent)', 'var(--green)', 'var(--purple)', 'var(--amber)'];
+    var months = years * 12;
+    container.innerHTML = rates.map(function (r, i) {
+      var fv  = computeFV(dca, r, months, initial);
+      var inv = initial + dca * months;
+      var mult = inv > 0 ? fv / inv : 1;
+      return '<div class="scenario-card">' +
+        '<div class="scenario-rate">' + (r * 100).toFixed(0) + '%/an</div>' +
+        '<div class="scenario-val" style="color:' + colors[i] + '">' + Math.round(fv).toLocaleString('fr-FR') + '\u00a0€</div>' +
+        '<div class="scenario-mult">' + mult.toFixed(1) + 'x le capital</div>' +
+      '</div>';
+    }).join('');
   }
 
-  // Expose globally
-  window.computeFV = computeFV;
-  window.updateSimulator = updateSimulator;
-  window.buildScenarios = buildScenarios;
+  /* ── LOMBARD CALCULATOR ──────────────── */
+  function updateLombard() {
+    var portfolio = parseFloat((document.getElementById('lomb-portfolio') || {}).value) || 0;
+    var ltv       = parseFloat((document.getElementById('lomb-ltv')       || {}).value) || 70;
+    var loanRate  = parseFloat((document.getElementById('lomb-rate')      || {}).value) || 3;
+    var investRate= parseFloat((document.getElementById('lomb-inv-rate')  || {}).value) || 8;
+    var loanYears = parseFloat((document.getElementById('lomb-years')     || {}).value) || 5;
+
+    var loan     = portfolio * ltv / 100;
+    var annualCost = loan * loanRate / 100;
+    var annualReturn = loan * investRate / 100;
+    var netReturn = annualReturn - annualCost;
+    var fvLoan = computeFV(0, investRate / 100, loanYears * 12, loan);
+    var totalCost = annualCost * loanYears;
+    var profit = fvLoan - loan - totalCost;
+
+    setLabel('lomb-result-loan',    Math.round(loan).toLocaleString('fr-FR') + '\u00a0€');
+    setLabel('lomb-result-cost',    Math.round(annualCost).toLocaleString('fr-FR') + '\u00a0€/an');
+    setLabel('lomb-result-net',     (netReturn >= 0 ? '+' : '') + Math.round(netReturn).toLocaleString('fr-FR') + '\u00a0€/an');
+    setLabel('lomb-result-profit',  (profit >= 0 ? '+' : '') + Math.round(profit).toLocaleString('fr-FR') + '\u00a0€');
+
+    var ltv_el = document.getElementById('lomb-ltv-val');
+    if (ltv_el) ltv_el.textContent = ltv + '%';
+  }
+
+  window.updateLombard = updateLombard;
+
+  /* ── INIT ────────────────────────────── */
+  document.addEventListener('DOMContentLoaded', function () {
+    ['sim-dca', 'sim-rate', 'sim-years', 'sim-initial'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateSimulator);
+    });
+    ['lomb-portfolio', 'lomb-ltv', 'lomb-rate', 'lomb-inv-rate', 'lomb-years'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateLombard);
+    });
+    updateSimulator();
+  });
 })();
