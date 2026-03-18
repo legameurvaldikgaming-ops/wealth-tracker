@@ -1,149 +1,192 @@
 /* ══════════════════════════════════════
-   CATALOG.JS — Catalogue actifs + filtres + recherche
+   CATALOG.JS — Asset catalogue + filters
    ══════════════════════════════════════ */
 
 (function () {
-
   var currentFilter = 'Tous';
-  var searchQuery = '';
+  var searchQuery   = '';
+  var watchlist     = JSON.parse(localStorage.getItem('wealth_watchlist') || '[]');
 
-  function filterAndRender() {
-    var q = searchQuery.toLowerCase();
+  function saveWatchlist() { localStorage.setItem('wealth_watchlist', JSON.stringify(watchlist)); }
+
+  window.filterCat = function (cat, el) {
+    currentFilter = cat;
+    document.querySelectorAll('.pill-filter').forEach(function (p) { p.classList.remove('active'); });
+    if (el) el.classList.add('active');
+    filterAndRender();
+  };
+
+  window.filterCatalog = function () {
+    var el = document.getElementById('catalog-search');
+    searchQuery = el ? el.value.toLowerCase().trim() : '';
+    filterAndRender();
+  };
+
+  window.filterAndRender = function () {
+    var data = window.CATALOG_DATA || [];
+    var filtered = data.filter(function (item) {
+      var matchCat = currentFilter === 'Tous' || item.cat === currentFilter ||
+                     (currentFilter === 'PEA' && item.pea) ||
+                     (currentFilter === 'Favoris' && watchlist.indexOf(item.ticker) !== -1);
+      var matchQ   = !searchQuery || (item.ticker + ' ' + item.name + ' ' + item.desc).toLowerCase().indexOf(searchQuery) !== -1;
+      return matchCat && matchQ;
+    });
+
     var grid = document.getElementById('catalog-grid');
     if (!grid) return;
-
-    var items = [];
-    for (var i = 0; i < CATALOG_DATA.length; i++) {
-      var item = CATALOG_DATA[i];
-      var matchCat = currentFilter === 'Tous' || item.cat === currentFilter;
-      var matchQ = !q || item.name.toLowerCase().indexOf(q) !== -1 ||
-                   item.ticker.toLowerCase().indexOf(q) !== -1 ||
-                   item.desc.toLowerCase().indexOf(q) !== -1;
-      if (matchCat && matchQ) items.push(item);
-    }
-
-    if (!items.length) {
-      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">' +
-        '<div class="empty-icon" style="color:var(--text3)"><svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="18" cy="18" r="12" stroke="currentColor" stroke-width="1.5"/><line x1="26" y1="26" x2="34" y2="34" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>' +
-        '<div class="empty-text">Aucun résultat</div>' +
-        '<div class="empty-sub">Essaie un autre terme de recherche</div>' +
-        '</div>';
+    if (!filtered.length) {
+      grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">Aucun résultat.</div></div>';
       return;
     }
 
-    var html = '';
-    for (var j = 0; j < items.length; j++) {
-      var it = items[j];
-      var cls = it.change >= 0 ? 'price-up' : 'price-down';
-      var badge = it.cat === 'ETF' ? 'badge-blue' : it.cat === 'Crypto' ? 'badge-amber' : 'badge-green';
-      var priceStr = it.price < 10 ? it.price.toFixed(2) : Math.round(it.price).toLocaleString('fr-FR');
-      var currency = it.cat === 'Crypto' ? '$' : '€';
-      html += '<div class="catalog-item" data-ticker="' + it.ticker + '" data-cat="' + it.cat + '" data-price="' + it.price + '">' +
-        '<div class="catalog-ticker">' + it.ticker + ' <span class="badge ' + badge + '" style="margin-left:6px">' + it.cat + '</span></div>' +
-        '<div class="catalog-name">' + it.name + '</div>' +
-        '<div class="catalog-desc">' + it.desc + '</div>' +
+    grid.innerHTML = filtered.map(function (item) {
+      var price = (window.LIVE_PRICES && window.LIVE_PRICES[item.ticker]) ? window.LIVE_PRICES[item.ticker] : item.price;
+      var chg   = item.change;
+      var chgClass = chg >= 0 ? 'price-up' : 'price-down';
+      var chgSign  = chg >= 0 ? '+' : '';
+      var priceStr = price >= 1000 ? Math.round(price).toLocaleString('fr-FR') : price.toFixed(2);
+      var inWatch  = watchlist.indexOf(item.ticker) !== -1;
+      return '<div class="catalog-item" data-ticker="' + item.ticker + '">' +
+        '<div class="catalog-item-header">' +
+          '<div>' +
+            '<div class="catalog-ticker">' + item.ticker + '</div>' +
+            '<div class="catalog-name">' + item.name + '</div>' +
+          '</div>' +
+          '<div class="catalog-price">' +
+            '<div class="catalog-price-val">' + priceStr + (item.cat === 'Crypto' ? '$' : '€') + '</div>' +
+            '<div class="catalog-chg ' + chgClass + '">' + chgSign + chg.toFixed(2) + '%</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="catalog-desc">' + item.desc + '</div>' +
         '<div class="catalog-footer">' +
-          '<span class="catalog-price">' + priceStr + ' ' + currency + '</span>' +
-          '<span class="catalog-change ' + cls + '">' + (it.change >= 0 ? '+' : '') + it.change.toFixed(2) + '%</span>' +
+          '<div style="display:flex;gap:6px;align-items:center">' +
+            '<span class="badge badge-' + item.cat.toLowerCase() + '">' + item.cat + '</span>' +
+            (item.pea ? '<span class="badge badge-pea">PEA</span>' : '') +
+          '</div>' +
+          '<button class="watchlist-btn' + (inWatch ? ' active' : '') + '" data-ticker="' + item.ticker + '" onclick="toggleWatch(event,\'' + item.ticker + '\')">' +
+            (inWatch ? '★ Watchlist' : '☆ Suivre') +
+          '</button>' +
         '</div>' +
       '</div>';
-    }
-    grid.innerHTML = html;
-  }
+    }).join('');
 
-  /* ── Modal for adding from catalog ── */
-  function openCatalogModal(ticker, cat, price) {
-    // Remove existing modal if any
-    var existing = document.getElementById('catalog-modal');
+    // Click to open modal
+    document.querySelectorAll('.catalog-item').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        if (e.target.closest('.watchlist-btn')) return;
+        var ticker = el.dataset.ticker;
+        var item = (window.CATALOG_DATA || []).find(function (d) { return d.ticker === ticker; });
+        if (item) openCatalogModal(item);
+      });
+    });
+  };
+
+  window.toggleWatch = function (e, ticker) {
+    e.stopPropagation();
+    var idx = watchlist.indexOf(ticker);
+    if (idx === -1) watchlist.push(ticker);
+    else watchlist.splice(idx, 1);
+    saveWatchlist();
+    filterAndRender();
+    if (typeof showToast === 'function') {
+      showToast(idx === -1 ? ticker + ' ajouté à la watchlist' : ticker + ' retiré de la watchlist', 'info');
+    }
+  };
+
+  window.openCatalogModal = function (item) {
+    var existing = document.getElementById('catalog-modal-overlay');
     if (existing) existing.remove();
 
-    var pCat = cat === 'ETF' ? 'pea' : cat === 'Crypto' ? 'crypto' : 'cto';
+    var price = (window.LIVE_PRICES && window.LIVE_PRICES[item.ticker]) ? window.LIVE_PRICES[item.ticker] : item.price;
+    var priceStr = price >= 1000 ? Math.round(price).toLocaleString('fr-FR') : price.toFixed(2);
+    var chgSign  = item.change >= 0 ? '+' : '';
+    var chgClass = item.change >= 0 ? 'price-up' : 'price-down';
+    var inWatch  = watchlist.indexOf(item.ticker) !== -1;
 
     var overlay = document.createElement('div');
-    overlay.id = 'catalog-modal';
+    overlay.id = 'catalog-modal-overlay';
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
-      '<div class="modal-card">' +
-        '<div class="card-title">Ajouter ' + ticker + ' au portfolio <span class="badge ' + (cat === 'ETF' ? 'badge-blue' : cat === 'Crypto' ? 'badge-amber' : 'badge-green') + '">' + pCat.toUpperCase() + '</span></div>' +
-        '<div class="form-grid" style="grid-template-columns:1fr 1fr">' +
-          '<div class="field"><label>Montant investi (€)</label><input type="number" id="modal-invested" placeholder="0" autofocus></div>' +
-          '<div class="field"><label>Valeur actuelle (€)</label><input type="number" id="modal-current" placeholder="0"></div>' +
+      '<div class="modal">' +
+        '<div class="modal-header">' +
+          '<div class="modal-title">' + item.ticker + ' — Ajouter au portfolio</div>' +
+          '<button class="modal-close" id="cat-modal-close">✕</button>' +
         '</div>' +
-        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">' +
-          '<button class="btn-sm" id="modal-cancel">Annuler</button>' +
-          '<button class="btn btn-primary" id="modal-confirm">Confirmer</button>' +
+        '<div class="catalog-modal-body">' +
+          '<div class="catalog-modal-price-row">' +
+            '<div>' +
+              '<div class="catalog-modal-ticker-big">' + item.ticker + '</div>' +
+              '<div style="font-size:13px;color:var(--text-secondary)">' + item.name + '</div>' +
+            '</div>' +
+            '<div style="text-align:right">' +
+              '<div style="font-family:\'JetBrains Mono\',monospace;font-size:20px;font-weight:700">' + priceStr + (item.cat === 'Crypto' ? '$' : '€') + '</div>' +
+              '<div class="' + chgClass + '" style="font-size:13px">' + chgSign + item.change.toFixed(2) + '%</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label>Catégorie</label>' +
+            '<select id="cat-modal-cat" class="ob-input">' +
+              '<option value="pea"' + (item.pea ? '' : ' disabled') + '>PEA' + (item.pea ? '' : ' (non éligible)') + '</option>' +
+              '<option value="cto">CTO</option>' +
+              '<option value="crypto"' + (item.cat === 'Crypto' ? ' selected' : '') + '>Crypto</option>' +
+            '</select>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+            '<div class="form-group">' +
+              '<label>Montant investi (€)</label>' +
+              '<input id="cat-modal-inv" type="number" class="ob-input" placeholder="0" min="0">' +
+            '</div>' +
+            '<div class="form-group">' +
+              '<label>Valeur actuelle (€)</label>' +
+              '<input id="cat-modal-cur" type="number" class="ob-input" placeholder="0" min="0">' +
+            '</div>' +
+          '</div>' +
+          '<button class="watchlist-btn' + (inWatch ? ' active' : '') + '" id="cat-modal-watch" style="width:100%;justify-content:center">' +
+            (inWatch ? '★ Dans ma watchlist' : '☆ Ajouter à la watchlist') +
+          '</button>' +
+        '</div>' +
+        '<div class="modal-footer">' +
+          '<button class="btn btn-ghost" id="cat-modal-cancel">Annuler</button>' +
+          '<button class="btn btn-primary" id="cat-modal-add">Ajouter au portfolio</button>' +
         '</div>' +
       '</div>';
 
     document.body.appendChild(overlay);
+    setTimeout(function () { overlay.classList.add('open'); }, 10);
 
-    // Force reflow for animation
-    overlay.offsetHeight;
-    overlay.classList.add('modal-visible');
+    function close() { overlay.classList.remove('open'); setTimeout(function () { overlay.remove(); }, 200); }
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    document.getElementById('cat-modal-close').addEventListener('click', close);
+    document.getElementById('cat-modal-cancel').addEventListener('click', close);
 
-    var cancel = document.getElementById('modal-cancel');
-    var confirm = document.getElementById('modal-confirm');
-    var investedInput = document.getElementById('modal-invested');
-    var currentInput = document.getElementById('modal-current');
-
-    function closeModal() {
-      overlay.classList.remove('modal-visible');
-      setTimeout(function () { overlay.remove(); }, 200);
-    }
-
-    cancel.addEventListener('click', closeModal);
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) closeModal();
+    document.getElementById('cat-modal-watch').addEventListener('click', function () {
+      toggleWatch({ stopPropagation: function () {} }, item.ticker);
+      var inW = watchlist.indexOf(item.ticker) !== -1;
+      this.textContent = inW ? '★ Dans ma watchlist' : '☆ Ajouter à la watchlist';
+      this.classList.toggle('active', inW);
     });
 
-    confirm.addEventListener('click', function () {
-      var invested = parseFloat(investedInput.value) || 0;
-      var current = parseFloat(currentInput.value) || 0;
-      if (!invested && !current) {
-        investedInput.style.borderColor = 'var(--red)';
-        currentInput.style.borderColor = 'var(--red)';
-        return;
-      }
-      addPosition(pCat, { name: ticker, invested: invested, current: current || invested });
-      renderAllPortfolioTabs();
+    document.getElementById('cat-modal-add').addEventListener('click', function () {
+      var cat = document.getElementById('cat-modal-cat').value;
+      var inv = parseFloat(document.getElementById('cat-modal-inv').value) || 0;
+      var cur = parseFloat(document.getElementById('cat-modal-cur').value) || 0;
+      if (!inv && !cur) { if (typeof showToast === 'function') showToast('Entrez un montant', 'error'); return; }
+      addPosition(cat, { name: item.name + ' (' + item.ticker + ')', invested: inv, current: cur || inv });
+      if (typeof renderAllPortfolioTabs === 'function') renderAllPortfolioTabs();
       if (typeof renderDashboard === 'function') renderDashboard();
-      showToast(ticker + ' ajouté au ' + pCat.toUpperCase(), 'success');
-      closeModal();
+      if (typeof showToast === 'function') showToast(item.ticker + ' ajouté en ' + cat.toUpperCase() + ' !', 'success');
+      close();
     });
+  };
 
-    // Focus first input
-    setTimeout(function () { investedInput.focus(); }, 100);
-  }
-
-  /* ── Event delegation ── */
-  document.addEventListener('click', function (e) {
-    var item = e.target.closest('.catalog-item');
-    if (item) {
-      openCatalogModal(item.dataset.ticker, item.dataset.cat, parseFloat(item.dataset.price));
+  document.addEventListener('DOMContentLoaded', function () {
+    var searchEl = document.getElementById('catalog-search');
+    if (searchEl) {
+      var debounce;
+      searchEl.addEventListener('input', function () {
+        clearTimeout(debounce);
+        debounce = setTimeout(filterAndRender, 300);
+      });
     }
   });
-
-  /* ── Filter pills ── */
-  function setCatalogFilter(cat, el) {
-    currentFilter = cat;
-    var pills = document.querySelectorAll('#cat-filters .pill');
-    for (var i = 0; i < pills.length; i++) pills[i].classList.remove('active');
-    if (el) el.classList.add('active');
-    filterAndRender();
-  }
-
-  function setCatalogSearch(q) {
-    searchQuery = q;
-    filterAndRender();
-  }
-
-  // Expose globally
-  window.filterAndRender = filterAndRender;
-  window.filterCat = setCatalogFilter;
-  window.filterCatalog = function () {
-    var el = document.getElementById('catalog-search');
-    searchQuery = el ? el.value : '';
-    filterAndRender();
-  };
-  window.addFromCatalog = openCatalogModal;
 })();
