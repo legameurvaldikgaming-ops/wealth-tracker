@@ -29,11 +29,13 @@
     <a class="nav-link" data-page="simulator"  onclick="showPage('simulator')">Simulateur</a>
     <a class="nav-link" data-page="roadmap"    onclick="showPage('roadmap')">Roadmap</a>
     <a class="nav-link" data-page="mindset"    onclick="showPage('mindset')">Mindset</a>
+    <a class="nav-link" data-page="settings"   onclick="showPage('settings')">⚙️</a>
   </div>
   <div class="nav-right">
     <span id="nav-total">0&nbsp;€</span>
     <span id="nav-clock" class="mono">00:00:00</span>
     <button class="btn-icon" onclick="if(typeof openCommandPalette==='function')openCommandPalette()" title="Cmd+K">⌘</button>
+    <button class="btn-icon" id="stealth-btn" onclick="toggleStealth()" title="Mode Stealth (Ctrl+Shift+H)">👁</button>
     <button class="btn-icon" onclick="toggleThemePanel()" title="Thème">◐</button>
     <div class="nav-avatar" title="Profil">W</div>
     <button class="btn-icon" id="hamburger" title="Menu">☰</button>
@@ -53,6 +55,7 @@
   <a class="drawer-link" data-page="simulator"  onclick="showPage('simulator')">Simulateur</a>
   <a class="drawer-link" data-page="roadmap"    onclick="showPage('roadmap')">Roadmap</a>
   <a class="drawer-link" data-page="mindset"    onclick="showPage('mindset')">Mindset</a>
+  <a class="drawer-link" data-page="settings"   onclick="showPage('settings')">⚙️ Paramètres</a>
   <div style="margin-top:auto;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px">
     <button class="btn btn-ghost" onclick="if(typeof exportData==='function')exportData()">📤 Exporter</button>
     <label class="btn btn-ghost" style="cursor:pointer">📥 Importer<input type="file" accept=".json" style="display:none" onchange="importData(this)"></label>
@@ -210,6 +213,139 @@
       </div>
     </div>
 
+    <!-- V4 — Score Santé + Coach hebdomadaire -->
+    <div class="section">
+      <div class="v4-top-row">
+
+        <!-- Score Santé Patrimoniale -->
+        <div class="card v4-health-card">
+          <div class="section-header">
+            <div>
+              <div class="section-title">Score Santé</div>
+              <div class="section-sub">Patrimonial 0-100</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="renderHealthScore()">Actualiser</button>
+          </div>
+          <div class="health-gauge-wrap">
+            <div class="health-gauge-number" id="health-gauge-value">—</div>
+            <div class="health-gauge-label" id="health-label">Calcul...</div>
+            <div class="health-gauge-bar-wrap">
+              <div class="health-gauge-bar" id="health-gauge-bar" style="width:0%"></div>
+            </div>
+          </div>
+          <div id="health-details" class="health-details"></div>
+        </div>
+
+        <!-- Fear & Greed Index -->
+        <div class="card v4-fng-card">
+          <div class="section-header">
+            <div>
+              <div class="section-title">Fear &amp; Greed</div>
+              <div class="section-sub">Sentiment de marché</div>
+            </div>
+            <span class="live-dot"></span>
+          </div>
+          <canvas id="fng-gauge" style="width:100%;height:110px;display:block"></canvas>
+          <div style="text-align:center;margin-top:8px">
+            <div class="fng-value" id="fng-value">—</div>
+            <div class="fng-label" id="fng-label">Chargement...</div>
+          </div>
+          <div id="fng-quote" class="fng-quote"></div>
+          <div id="fng-updated" style="font-size:11px;color:var(--text-tertiary);margin-top:8px;text-align:center"></div>
+        </div>
+
+        <!-- Halving Countdown -->
+        <div class="card v4-halving-card">
+          <div class="section-title" style="margin-bottom:12px">⛏️ Prochain Halving BTC</div>
+          <div class="halving-countdown">
+            <div class="halving-unit"><span class="halving-num" id="halving-days">—</span><span class="halving-lbl">jours</span></div>
+            <div class="halving-sep">:</div>
+            <div class="halving-unit"><span class="halving-num" id="halving-hours">—</span><span class="halving-lbl">h</span></div>
+            <div class="halving-sep">:</div>
+            <div class="halving-unit"><span class="halving-num" id="halving-mins">—</span><span class="halving-lbl">min</span></div>
+          </div>
+          <div style="margin-top:16px">
+            <div style="font-size:12px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Historique halvings</div>
+            <div id="halving-history"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- V4 — Revenus Actifs vs Passifs -->
+    <div class="section">
+      <div class="card">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Revenus Actifs vs Passifs</div>
+            <div class="section-sub">Ta progression vers la liberté financière</div>
+          </div>
+          <div class="field" style="flex-direction:row;align-items:center;gap:8px;margin:0">
+            <label style="font-size:12px;color:var(--text-secondary);white-space:nowrap">Salaire net/mois</label>
+            <input id="salary-input" type="number" placeholder="2200" style="width:120px;padding:6px 10px;font-size:13px">
+          </div>
+        </div>
+        <div class="income-bars">
+          <div class="income-bar-row">
+            <span class="income-bar-label">Actifs</span>
+            <div class="income-bar-track">
+              <div class="income-bar-fill income-bar-active" id="income-bar-active" style="width:0%"></div>
+            </div>
+            <span class="income-bar-val" id="income-active-val">0 €</span>
+          </div>
+          <div class="income-bar-row">
+            <span class="income-bar-label" style="color:var(--green)">Passifs</span>
+            <div class="income-bar-track">
+              <div class="income-bar-fill income-bar-passive" id="income-bar-passive" style="width:0%"></div>
+            </div>
+            <span class="income-bar-val td-green" id="income-passive-val">0 €</span>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:22px;font-weight:300;letter-spacing:-0.5px"><span id="income-freedom-pct">0%</span> de liberté financière</div>
+            <div id="income-freedom-msg" style="font-size:13px;color:var(--text-secondary);margin-top:4px"></div>
+          </div>
+          <div id="income-passive-detail" class="income-detail"></div>
+        </div>
+        <div id="income-fi-time" style="font-size:13px;color:var(--accent);margin-top:12px;font-weight:500"></div>
+      </div>
+    </div>
+
+    <!-- V4 — Coach Hebdomadaire -->
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Cette semaine 🎯</div>
+          <div class="section-sub">3 actions personnalisées selon l'état de ton portfolio</div>
+        </div>
+        <span style="font-size:12px;color:var(--text-tertiary)">Reset chaque lundi</span>
+      </div>
+      <div id="coach-cards" class="coach-cards"></div>
+    </div>
+
+    <!-- V4 — Stress Test -->
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Stress Test</div>
+          <div class="section-sub">Simulation de crash de marché</div>
+        </div>
+        <button class="btn btn-primary" onclick="runStressTest()">🧪 Lancer le stress test</button>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+          <span style="font-size:13px;color:var(--text-secondary)">Scénario de baisse :</span>
+          <input type="range" id="stress-slider" min="10" max="80" step="10" value="40" style="flex:1;max-width:300px" oninput="runStressTest()">
+          <span class="mono" id="stress-pct-label" style="font-size:16px;font-weight:600;color:var(--red)">-40%</span>
+        </div>
+        <div id="stress-output">
+          <div style="text-align:center;padding:24px;color:var(--text-tertiary)">Configurez vos positions dans Portfolio puis lancez le test.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Quote -->
     <div class="section" style="padding-bottom:48px">
       <div class="card" style="text-align:center;padding:40px">
@@ -228,29 +364,35 @@
       <p class="section-sub" style="margin-top:4px">Gérez vos positions et DCA</p>
     </div>
     <div class="inner-tabs" style="margin-top:24px">
-      <div class="inner-tab active" data-tab="pea"    onclick="showInner('pea',this)">PEA <span class="tab-badge">0</span></div>
-      <div class="inner-tab"       data-tab="cto"    onclick="showInner('cto',this)">CTO <span class="tab-badge">0</span></div>
-      <div class="inner-tab"       data-tab="crypto" onclick="showInner('crypto',this)">Crypto <span class="tab-badge">0</span></div>
-      <div class="inner-tab"       data-tab="immo"   onclick="showInner('immo',this)">Immobilier <span class="tab-badge">0</span></div>
-      <div class="inner-tab"       data-tab="dca"    onclick="showInner('dca',this)">DCA <span class="tab-badge">0</span></div>
+      <div class="inner-tab active" data-tab="pea"     onclick="showInner('pea',this)">PEA <span class="tab-badge">0</span></div>
+      <div class="inner-tab"        data-tab="cto"     onclick="showInner('cto',this)">CTO <span class="tab-badge">0</span></div>
+      <div class="inner-tab"        data-tab="crypto"  onclick="showInner('crypto',this)">Crypto <span class="tab-badge">0</span></div>
+      <div class="inner-tab"        data-tab="immo"    onclick="showInner('immo',this)">Immobilier <span class="tab-badge">0</span></div>
+      <div class="inner-tab"        data-tab="dca"     onclick="showInner('dca',this)">DCA <span class="tab-badge">0</span></div>
+      <div class="inner-tab"        data-tab="defi"    onclick="showInner('defi',this)">DeFi <span class="tab-badge">0</span></div>
+      <div class="inner-tab"        data-tab="journal" onclick="showInner('journal',this)">Journal <span class="tab-badge">0</span></div>
     </div>
 
-    <!-- PEA -->
+    <!-- PEA — V4: ticker + shares + pricePerShare + buyDate -->
     <div id="pane-pea" class="inner-pane active">
       <div class="add-form">
         <div class="add-form-title">+ Nouvelle position PEA</div>
         <div class="form-row">
-          <div class="form-group" style="flex:2">
-            <label>Nom de l'actif</label>
-            <input id="pea-n" placeholder="ex: CW8 MSCI World">
+          <div class="form-group">
+            <label>Ticker ETF</label>
+            <input id="pea-ticker" placeholder="ex: CW8, PE500, PUST">
           </div>
           <div class="form-group">
-            <label>Investi (€)</label>
-            <input id="pea-inv" type="number" placeholder="0" min="0">
+            <label>Nombre de parts</label>
+            <input id="pea-shares" type="number" placeholder="ex: 10.5" min="0" step="0.0001">
           </div>
           <div class="form-group">
-            <label>Valeur actuelle (€)</label>
-            <input id="pea-cur" type="number" placeholder="0" min="0">
+            <label>Prix d'achat / part (€)</label>
+            <input id="pea-pps" type="number" placeholder="ex: 420.50" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Date d'achat</label>
+            <input id="pea-buydate" type="date">
           </div>
           <div class="form-group" style="justify-content:flex-end">
             <label>&nbsp;</label>
@@ -261,29 +403,33 @@
       <div class="card">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Actif</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Perf%</th><th>Actions</th></tr></thead>
+            <thead><tr><th>ETF</th><th>Parts</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Perf%</th><th>Actions</th></tr></thead>
             <tbody id="pea-tbody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- CTO -->
+    <!-- CTO — V4: ticker + shares + pricePerShare + buyDate -->
     <div id="pane-cto" class="inner-pane">
       <div class="add-form">
         <div class="add-form-title">+ Nouvelle position CTO</div>
         <div class="form-row">
-          <div class="form-group" style="flex:2">
-            <label>Nom de l'actif</label>
-            <input id="cto-n" placeholder="ex: NVDA, AAPL...">
+          <div class="form-group">
+            <label>Ticker</label>
+            <input id="cto-ticker" placeholder="ex: NVDA, AAPL, MSFT">
           </div>
           <div class="form-group">
-            <label>Investi (€)</label>
-            <input id="cto-inv" type="number" placeholder="0" min="0">
+            <label>Nombre de parts</label>
+            <input id="cto-shares" type="number" placeholder="ex: 5" min="0" step="0.0001">
           </div>
           <div class="form-group">
-            <label>Valeur actuelle (€)</label>
-            <input id="cto-cur" type="number" placeholder="0" min="0">
+            <label>Prix d'achat / part (€)</label>
+            <input id="cto-pps" type="number" placeholder="ex: 178" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Date d'achat</label>
+            <input id="cto-buydate" type="date">
           </div>
           <div class="form-group" style="justify-content:flex-end">
             <label>&nbsp;</label>
@@ -294,41 +440,46 @@
       <div class="card">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Actif</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Perf%</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Actif</th><th>Parts</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Perf%</th><th>Actions</th></tr></thead>
             <tbody id="cto-tbody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Crypto -->
+    <!-- Crypto — V4: ticker + quantity + buyPrice + buyDate -->
     <div id="pane-crypto" class="inner-pane">
+      <div id="bias-warning-banner" class="tax-banner" style="display:none;background:rgba(255,159,10,0.15);border-color:var(--amber)"></div>
       <div id="crypto-tax-banner" class="tax-banner" style="display:none"></div>
       <div class="add-form">
         <div class="add-form-title">+ Nouvelle position Crypto</div>
         <div class="form-row">
-          <div class="form-group" style="flex:2">
-            <label>Crypto</label>
-            <input id="crypto-n" placeholder="ex: Bitcoin, Ethereum...">
+          <div class="form-group">
+            <label>Token</label>
+            <input id="crypto-ticker" placeholder="ex: BTC, ETH, SOL">
           </div>
           <div class="form-group">
-            <label>Investi (€)</label>
-            <input id="crypto-inv" type="number" placeholder="0" min="0">
+            <label>Quantité</label>
+            <input id="crypto-qty" type="number" placeholder="ex: 0.05" min="0" step="any">
           </div>
           <div class="form-group">
-            <label>Valeur actuelle (€)</label>
-            <input id="crypto-cur" type="number" placeholder="0" min="0">
+            <label>Prix d'achat ($)</label>
+            <input id="crypto-bp" type="number" placeholder="ex: 85000" min="0">
+          </div>
+          <div class="form-group">
+            <label>Date d'achat</label>
+            <input id="crypto-buydate" type="date">
           </div>
           <div class="form-group" style="justify-content:flex-end">
             <label>&nbsp;</label>
-            <button class="btn btn-primary" onclick="addPos('crypto')">Ajouter</button>
+            <button class="btn btn-primary" onclick="addCrypto()">Ajouter</button>
           </div>
         </div>
       </div>
       <div class="card">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Actif</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Perf%</th><th>Multiple</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Token</th><th>Quantité</th><th>Prix live</th><th>Investi</th><th>Valeur</th><th>+/-</th><th>Perf%</th><th>Multiple</th><th>Actions</th></tr></thead>
             <tbody id="crypto-tbody"></tbody>
           </table>
         </div>
@@ -416,7 +567,152 @@
       </div>
       <div id="dca-list" class="dca-list"></div>
     </div>
+
+    <!-- DEFI — V4 -->
+    <div id="pane-defi" class="inner-pane">
+      <div class="defi-summary-row">
+        <div class="defi-stat"><div class="defi-stat-val" id="defi-total-value">0 €</div><div class="defi-stat-lbl">Capital déployé</div></div>
+        <div class="defi-stat"><div class="defi-stat-val td-green" id="defi-total-yield">0 €</div><div class="defi-stat-lbl">Yields accumulés</div></div>
+      </div>
+
+      <!-- Add DeFi position -->
+      <div class="add-form">
+        <div class="add-form-title">+ Nouvelle position DeFi</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Protocole</label>
+            <select id="defi-protocol">
+              <option>Aave</option><option>Uniswap</option><option>Curve</option>
+              <option>Compound</option><option>Lido</option><option>PancakeSwap</option>
+              <option>Balancer</option><option>Autre</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Asset 1</label>
+            <input id="defi-asset1" placeholder="ex: ETH">
+          </div>
+          <div class="form-group">
+            <label>Quantité 1</label>
+            <input id="defi-amount1" type="number" placeholder="1.5" min="0" step="any">
+          </div>
+          <div class="form-group">
+            <label>Prix entrée 1 ($)</label>
+            <input id="defi-ep1" type="number" placeholder="3000" min="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Asset 2 (pool LP)</label>
+            <input id="defi-asset2" placeholder="ex: USDC (optionnel)">
+          </div>
+          <div class="form-group">
+            <label>Quantité 2</label>
+            <input id="defi-amount2" type="number" placeholder="0" min="0" step="any">
+          </div>
+          <div class="form-group">
+            <label>Prix entrée 2 ($)</label>
+            <input id="defi-ep2" type="number" placeholder="1" min="0">
+          </div>
+          <div class="form-group">
+            <label>APY (%)</label>
+            <input id="defi-apy" type="number" placeholder="15.5" min="0" step="0.1">
+          </div>
+          <div class="form-group">
+            <label>Date entrée</label>
+            <input id="defi-startdate" type="date">
+          </div>
+          <div class="form-group" style="justify-content:flex-end">
+            <label>&nbsp;</label>
+            <button class="btn btn-primary" onclick="addDefi()">Ajouter</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Protocole</th><th>Assets</th><th>Capital</th><th>APY</th><th>Yields accumulés</th><th>Impermanent Loss</th><th>Depuis</th><th>Actions</th></tr></thead>
+            <tbody id="defi-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Impermanent Loss Calculator -->
+      <div class="card" style="margin-top:16px">
+        <div class="section-title" style="font-size:15px;margin-bottom:16px">🧮 Calculateur Impermanent Loss</div>
+        <div class="form-row">
+          <div class="form-group"><label>Capital investi (€)</label><input id="il-capital" type="number" placeholder="1000"></div>
+          <div class="form-group"><label>Prix entrée Asset 1 ($)</label><input id="il-ep1" type="number" placeholder="3000"></div>
+          <div class="form-group"><label>Prix entrée Asset 2 ($)</label><input id="il-ep2" type="number" placeholder="1"></div>
+          <div class="form-group"><label>Prix actuel Asset 1 ($)</label><input id="il-cp1" type="number" placeholder="3500"></div>
+          <div class="form-group"><label>Prix actuel Asset 2 ($)</label><input id="il-cp2" type="number" placeholder="1"></div>
+          <div class="form-group"><label>APY (%)</label><input id="il-apy" type="number" placeholder="15"></div>
+          <div class="form-group"><label>Jours en pool</label><input id="il-days" type="number" placeholder="30"></div>
+          <div class="form-group" style="justify-content:flex-end"><label>&nbsp;</label>
+            <button class="btn btn-primary" id="il-calc-btn">Calculer</button></div>
+        </div>
+        <div id="il-output" style="margin-top:12px"></div>
+      </div>
+
+      <!-- Gas Fees Tracker -->
+      <div class="card" style="margin-top:16px">
+        <div class="section-title" style="font-size:15px;margin-bottom:12px">⛽ Gas Fees Tracker</div>
+        <div style="display:flex;gap:24px;margin-bottom:16px;flex-wrap:wrap">
+          <div><div style="font-size:12px;color:var(--text-tertiary)">Total gas payé</div><div class="mono" style="font-size:18px;color:var(--red)" id="gas-total">0 €</div></div>
+          <div><div style="font-size:12px;color:var(--text-tertiary)">Impact rentabilité</div><div id="gas-impact" style="font-size:14px;font-weight:500">—</div></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Date</label><input id="gas-date" type="date"></div>
+          <div class="form-group"><label>Montant (€)</label><input id="gas-amount" type="number" placeholder="12.50" step="0.01"></div>
+          <div class="form-group" style="flex:2"><label>Action</label><input id="gas-action" placeholder="ex: Swap ETH→USDC sur Uniswap"></div>
+          <div class="form-group" style="justify-content:flex-end"><label>&nbsp;</label>
+            <button class="btn btn-primary" onclick="addGasFee()">Ajouter</button></div>
+        </div>
+        <div id="gas-list" style="max-height:200px;overflow-y:auto;margin-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- JOURNAL — V4 -->
+    <div id="pane-journal" class="inner-pane">
+      <div class="add-form">
+        <div class="add-form-title">+ Nouvelle décision</div>
+        <div class="form-row">
+          <div class="form-group"><label>Date</label><input id="journal-date" type="date"></div>
+          <div class="form-group"><label>Actif</label><input id="journal-asset" placeholder="ex: BTC, CW8..."></div>
+          <div class="form-group">
+            <label>Action</label>
+            <select id="journal-action">
+              <option value="achat">Achat</option>
+              <option value="vente">Vente</option>
+              <option value="hold">Hold</option>
+              <option value="rééquilibrage">Rééquilibrage</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Montant (€)</label><input id="journal-amount" type="number" placeholder="0"></div>
+          <div class="form-group">
+            <label>Humeur</label>
+            <select id="journal-humeur">
+              <option>😌</option><option>😊</option><option>😐</option>
+              <option>😰</option><option>🤑</option><option>😤</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:3">
+            <label>Thèse d'investissement</label>
+            <textarea id="journal-these" placeholder="Pourquoi cette décision ? Quels sont tes arguments ? Quel est ton plan de sortie ?" style="width:100%;min-height:80px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text);font-family:inherit;font-size:13px;resize:vertical"></textarea>
+          </div>
+          <div class="form-group" style="justify-content:flex-end;align-self:flex-end">
+            <label>&nbsp;</label>
+            <button class="btn btn-primary" onclick="addJournalEntry()">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+      <div id="journal-list"></div>
+    </div>
+
   </div><!-- /portfolio -->
+
+  <!-- V4 — Intelligence Financière (inline sections in portfolio) -->
 
 
   <!-- ════ CATALOGUE ════════════════════ -->
@@ -523,6 +819,111 @@
             <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text-secondary)">Scénarios</div>
             <div id="scenarios-grid" class="scenarios-grid"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Expatriation Simulator -->
+      <div class="lombard-section" style="margin-top:20px">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Simulateur Expatriation</div>
+            <div class="section-sub">3 scénarios sur 10 ans (CDI France / Freelance / Suisse-Lux)</div>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="form-row">
+              <div class="form-group">
+                <label>% du salaire investi en DCA</label>
+                <input id="expat-dca-pct" type="number" value="50" min="10" max="90" step="5" oninput="renderExpatSimulator()">
+              </div>
+              <div class="form-group">
+                <label>Horizon (années)</label>
+                <input id="expat-years" type="number" value="10" min="1" max="30" oninput="renderExpatSimulator()">
+              </div>
+              <div class="form-group">
+                <label>Rendement (%/an)</label>
+                <input id="expat-rate" type="number" value="8" min="1" max="20" step="0.5" oninput="renderExpatSimulator()">
+              </div>
+            </div>
+            <div class="table-wrap" style="margin-top:12px">
+              <table>
+                <thead><tr><th>Scénario</th><th>DCA/mois</th><th>Patrimoine final</th><th>Impôts payés</th><th>Âge liberté FI</th></tr></thead>
+                <tbody id="expat-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <canvas id="expat-chart" style="width:100%;height:220px"></canvas>
+            <div class="proj-legend" style="margin-top:8px">
+              <div class="proj-legend-item"><div class="proj-legend-line" style="background:#6e6e73"></div>CDI France</div>
+              <div class="proj-legend-item"><div class="proj-legend-line" style="background:var(--accent)"></div>Freelance</div>
+              <div class="proj-legend-item"><div class="proj-legend-line" style="background:var(--green)"></div>Expatriation</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Retirement Calculator -->
+      <div class="lombard-section" style="margin-top:20px">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Calculateur Retraite Personnelle</div>
+            <div class="section-sub">L'âge où tes revenus passifs > dépenses</div>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="form-row">
+              <div class="form-group"><label>Dépenses souhaitées/mois (€)</label><input id="retire-spend" type="number" value="3000" oninput="calcRetirement()"></div>
+              <div class="form-group"><label>Rendement espéré (%/an)</label><input id="retire-rate" type="number" value="7" step="0.5" oninput="calcRetirement()"></div>
+              <div class="form-group"><label>Âge actuel</label><input id="retire-age" type="number" value="25" min="18" max="60" oninput="calcRetirement()"></div>
+            </div>
+            <div class="slider-group" style="margin-top:12px">
+              <div class="slider-header">
+                <span class="slider-label">Impact de +100€ DCA/mois</span>
+                <span class="slider-value" id="retire-dca-delta-val">+0€/mois</span>
+              </div>
+              <input type="range" id="retire-dca-delta" min="-500" max="1000" step="50" value="0" oninput="calcRetirement()">
+            </div>
+          </div>
+          <div id="retire-output" class="card"></div>
+        </div>
+      </div>
+
+      <!-- Coût de l'Impatience -->
+      <div class="lombard-section" style="margin-top:20px">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Coût de l'Impatience</div>
+            <div class="section-sub">Impact d'un retrait anticipé du PEA</div>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="form-row">
+              <div class="form-group"><label>Montant retiré (€)</label><input id="imp-amount" type="number" placeholder="5000"></div>
+              <div class="form-group"><label>Années restantes avant 5 ans PEA</label><input id="imp-years-left" type="number" placeholder="3" min="0" max="5"></div>
+              <div class="form-group"><label>Rendement espéré (%/an)</label><input id="imp-rate" type="number" value="7" step="0.5"></div>
+              <div class="form-group" style="justify-content:flex-end"><label>&nbsp;</label>
+                <button class="btn btn-primary" id="imp-calc-btn">Calculer</button></div>
+            </div>
+          </div>
+          <div id="imp-output" class="card"></div>
+        </div>
+      </div>
+
+      <!-- Matrice de Corrélation -->
+      <div class="lombard-section" style="margin-top:20px;padding-bottom:40px">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Matrice de Corrélation</div>
+            <div class="section-sub">Score de vraie diversification de ton portfolio</div>
+          </div>
+          <button class="btn btn-primary" id="corr-render-btn" onclick="renderCorrelationMatrix()">Analyser</button>
+        </div>
+        <div id="correlation-output" class="card">
+          <div style="color:var(--text-tertiary);text-align:center;padding:24px">Cliquez sur "Analyser" pour voir la matrice.</div>
         </div>
       </div>
 
@@ -639,6 +1040,27 @@
         </div>
       </div>
     </div>
+      <!-- V4 — Macro Calendar -->
+      <div class="section" style="padding-bottom:40px">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Calendrier Macro</div>
+            <div class="section-sub">Prochains événements à surveiller</div>
+          </div>
+        </div>
+        <div id="macro-calendar" class="macro-calendar"></div>
+        <!-- BTC Dominance -->
+        <div class="card" style="margin-top:16px">
+          <div class="section-header" style="margin-bottom:8px">
+            <div class="section-title" style="font-size:15px">Dominance Bitcoin</div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:12px">
+            <div style="font-size:32px;font-weight:300;color:var(--amber)" class="mono" id="btc-dominance-value">—</div>
+          </div>
+          <div id="btc-dominance-msg" style="font-size:13px;margin-top:4px;color:var(--text-secondary)"></div>
+        </div>
+      </div>
+    </div>
   </div><!-- /roadmap -->
 
 
@@ -683,6 +1105,71 @@
     </div>
   </div><!-- /mindset -->
 
+  <!-- ════ SETTINGS ══════════════════════ -->
+  <div id="page-settings" class="page">
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Paramètres</div>
+          <div class="section-sub">Vault, données et préférences</div>
+        </div>
+      </div>
+
+      <!-- Vault -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-title" style="font-size:16px;margin-bottom:16px">🔐 Vault — Infos importantes</div>
+        <div class="form-row">
+          <div class="form-group"><label>Date ouverture PEA</label><input id="vault-pea-date" type="date"></div>
+          <div class="form-group"><label>Date ouverture Livret A</label><input id="vault-livreta-date" type="date"></div>
+          <div class="form-group"><label>N° contrat / compte</label><input id="vault-contract-num" placeholder="IBAN, contrat d'assurance vie..."></div>
+          <div class="form-group"><label>Email comptable crypto</label><input id="vault-accountant-email" type="email" placeholder="contact@fiscalite-crypto.fr"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>Notes libres</label>
+            <textarea id="vault-notes" placeholder="Notes privées : login broker, codes, infos importantes..." style="width:100%;min-height:100px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text);font-family:inherit;font-size:13px;resize:vertical"></textarea>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px">
+          <button class="btn btn-primary" onclick="saveVault()">💾 Sauvegarder</button>
+          <button class="btn btn-ghost" onclick="exportVault()">📤 Exporter JSON</button>
+        </div>
+      </div>
+
+      <!-- Provision fiscale crypto -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-title" style="font-size:16px;margin-bottom:16px">💰 Provision Fiscale Crypto</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Montant provisionné (€)</label>
+            <input id="tax-provision-input" type="number" placeholder="0" oninput="updateTaxProvision()">
+          </div>
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <div style="font-size:13px;color:var(--text-secondary);padding:10px 0">Montant mis de côté pour la flat tax 30% sur tes plus-values crypto.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export / Import -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-title" style="font-size:16px;margin-bottom:16px">📦 Données</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="exportData()">📤 Exporter Portfolio</button>
+          <label class="btn btn-ghost" style="cursor:pointer">📥 Importer Portfolio<input type="file" accept=".json" style="display:none" onchange="importData(this)"></label>
+          <button class="btn btn-ghost" onclick="generateMonthlyReport()">📊 Générer Rapport Mensuel</button>
+        </div>
+      </div>
+
+      <!-- Stealth Mode -->
+      <div class="card">
+        <div class="section-title" style="font-size:16px;margin-bottom:12px">🙈 Mode Stealth</div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Masque tous les montants avec •••••. Raccourci clavier : <code>Ctrl+Shift+H</code></p>
+        <button class="btn btn-primary" onclick="toggleStealth()">Basculer le mode Stealth</button>
+      </div>
+    </div>
+  </div><!-- /settings -->
+
 </div><!-- /app -->
 
 <!-- ══ TOAST CONTAINER ════════════════════ -->
@@ -707,6 +1194,12 @@
 <script src="js/dashboard.js"></script>
 <script src="js/commands.js"></script>
 <script src="js/onboarding.js"></script>
+<script src="js/v4-market.js"></script>
+<script src="js/v4-income.js"></script>
+<script src="js/v4-defi.js"></script>
+<script src="js/v4-intelligence.js"></script>
+<script src="js/v4-tools.js"></script>
+<script src="js/v4-coach.js"></script>
 <script src="js/app.js"></script>
 
 </body>

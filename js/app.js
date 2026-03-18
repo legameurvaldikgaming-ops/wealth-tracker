@@ -19,12 +19,26 @@
     updateNavPill();
 
     // Render page
-    if (name === 'dashboard'  && typeof renderDashboard       === 'function') renderDashboard();
+    if (name === 'dashboard') {
+      if (typeof renderDashboard === 'function') renderDashboard();
+      if (typeof renderHealthScore === 'function') setTimeout(renderHealthScore, 100);
+      if (typeof renderIncome === 'function') setTimeout(renderIncome, 150);
+      if (typeof renderCoach === 'function') setTimeout(renderCoach, 200);
+      if (typeof runStressTest === 'function') setTimeout(runStressTest, 250);
+    }
     if (name === 'portfolio')  renderAllPortfolioTabsIfExists();
-    if (name === 'simulator'  && typeof updateSimulator        === 'function') setTimeout(updateSimulator, 50);
+    if (name === 'simulator') {
+      if (typeof updateSimulator === 'function') setTimeout(updateSimulator, 50);
+      if (typeof renderExpatSimulator === 'function') setTimeout(renderExpatSimulator, 100);
+      if (typeof calcRetirement === 'function') setTimeout(calcRetirement, 150);
+    }
     if (name === 'catalog'    && typeof filterAndRender        === 'function') filterAndRender();
     if (name === 'mindset'    && typeof renderMindset          === 'function') renderMindset();
-    if (name === 'roadmap'    && typeof renderRoadmap          === 'function') renderRoadmap();
+    if (name === 'roadmap') {
+      if (typeof renderRoadmap === 'function') renderRoadmap();
+      if (typeof renderMacroCalendar === 'function') setTimeout(renderMacroCalendar, 50);
+      if (typeof fetchBtcDominance === 'function') setTimeout(fetchBtcDominance, 100);
+    }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
     closeDrawer();
@@ -176,11 +190,30 @@
     // Boot page
     showPage('dashboard');
 
+    // V4: init health score, income, coach
+    if (typeof renderHealthScore === 'function') setTimeout(renderHealthScore, 500);
+    if (typeof renderIncome === 'function') setTimeout(renderIncome, 600);
+    if (typeof renderCoach === 'function') setTimeout(renderCoach, 1500);
+
+    // V4: tax provision input
+    var taxEl = document.getElementById('tax-provision-input');
+    if (taxEl && window.STATE_V4) {
+      taxEl.value = window.STATE_V4.taxProvision || '';
+    }
+
     // Onboarding
     if (typeof startOnboarding === 'function') {
       setTimeout(startOnboarding, 600);
     }
   });
+
+  /* ── V4: Tax provision ───────────────── */
+  window.updateTaxProvision = function () {
+    var el = document.getElementById('tax-provision-input');
+    if (!el || !window.STATE_V4) return;
+    window.STATE_V4.taxProvision = parseFloat(el.value) || 0;
+    saveV4State();
+  };
 
   /* ── THEME PANEL ─────────────────────── */
   window.toggleThemePanel = function () {

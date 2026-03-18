@@ -1,25 +1,20 @@
 /* ══════════════════════════════════════
-   PORTFOLIO.JS — Full CRUD all categories
+   PORTFOLIO.JS — Full CRUD + V4 quantity system
    ══════════════════════════════════════ */
 
 (function () {
-  var pendingDelete = {}; // { 'cat:id': timerRef }
+  var pendingDelete = {};
 
-  /* ── HELPERS ─────────────────────────── */
   function pnlClass(v) { return v >= 0 ? 'td-green' : 'td-red'; }
   function pnlSign(v)  { return v >= 0 ? '+' : ''; }
 
   function actionsCell(cat, id) {
-    return '<td>' +
-      '<button class="btn btn-ghost btn-sm" onclick="requestDelete(\'' + cat + '\',\'' + id + '\',this)">Supprimer</button>' +
-      '</td>';
+    return '<td><button class="btn btn-ghost btn-sm" onclick="requestDelete(\'' + cat + '\',\'' + id + '\',this)">Supprimer</button></td>';
   }
 
-  /* ── REQUEST DELETE ──────────────────── */
   window.requestDelete = function (cat, id, btn) {
     var key = cat + ':' + id;
     if (pendingDelete[key]) {
-      // Already pending — confirm immediately
       clearTimeout(pendingDelete[key]);
       delete pendingDelete[key];
       removePosition(cat, id);
@@ -41,22 +36,60 @@
     }, 3000);
   };
 
-  /* ── PEA / CTO TABLE ─────────────────── */
+  // ── BIAS DETECTION ────────────────────
+  function checkBiasWarnings() {
+    var items = STATE.crypto || [];
+    var now = Date.now();
+    var week = 7 * 24 * 3600 * 1000;
+    var counts = {};
+    items.forEach(function(p) {
+      var t = (p.ticker || p.name || '').toUpperCase();
+      var d = p.buyDate ? new Date(p.buyDate).getTime() : 0;
+      if (now - d < week) counts[t] = (counts[t] || 0) + 1;
+    });
+    var msgs = [];
+    Object.keys(counts).forEach(function(t) {
+      if (counts[t] >= 3) msgs.push('"Sur-pondération émotionnelle détectée sur ' + t + '"');
+    });
+    var totals = getTotals();
+    items.forEach(function(p) {
+      var cur = getCryptoCurrentValue(p);
+      var ticker = (p.ticker || p.name || '').toUpperCase().split(' ')[0];
+      if (totals.total > 0 && cur / totals.total > 0.60) {
+        msgs.push(ticker + ' représente ' + Math.round(cur/totals.total*100) + '% du portfolio — diversification insuffisante');
+      }
+    });
+    var bannerEl = document.getElementById('bias-warning-banner');
+    if (bannerEl) {
+      if (msgs.length) {
+        bannerEl.innerHTML = '⚠️ <strong>Détecteur de biais :</strong> ' + msgs.join(' · ');
+        bannerEl.style.display = 'flex';
+      } else {
+        bannerEl.style.display = 'none';
+      }
+    }
+  }
+
+  // ── PEA / CTO (V4: ETF with shares) ──
   function renderStockTable(cat) {
     var items = STATE[cat] || [];
     var tbody = document.getElementById(cat + '-tbody');
     if (!tbody) return;
     if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-tertiary)">Aucune position. Ajoutez votre première ligne ci-dessus.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-tertiary)">Aucune position. Ajoutez votre première ligne ci-dessus.</td></tr>';
       return;
     }
     tbody.innerHTML = items.map(function (p) {
-      var inv = parseFloat(p.invested) || 0;
-      var cur = parseFloat(p.current)  || 0;
-      var pnl = cur - inv;
-      var pct = inv > 0 ? (pnl / inv * 100) : 0;
+      var shares = parseFloat(p.shares) || 0;
+      var pps    = parseFloat(p.pricePerShare) || 0;
+      var inv    = shares > 0 && pps > 0 ? shares * pps : parseFloat(p.invested) || 0;
+      var cur    = typeof getETFCurrentValue === 'function' ? getETFCurrentValue(p) : (parseFloat(p.current) || 0);
+      var pnl    = cur - inv;
+      var pct    = inv > 0 ? (pnl / inv * 100) : 0;
+      var ticker = p.ticker ? ' <small style="color:var(--text-tertiary)">(' + p.ticker + ')</small>' : '';
       return '<tr>' +
-        '<td><strong>' + (p.name || p.asset || '—') + '</strong></td>' +
+        '<td><strong>' + (p.name || p.asset || '—') + '</strong>' + ticker + '</td>' +
+        '<td class="td-mono">' + (shares > 0 ? shares.toFixed(4) + ' parts' : '—') + '</td>' +
         '<td class="td-mono">' + fmt(inv) + '</td>' +
         '<td class="td-mono">' + fmt(cur) + '</td>' +
         '<td class="td-mono ' + pnlClass(pnl) + '">' + pnlSign(pnl) + fmt(pnl) + '</td>' +
@@ -67,14 +100,17 @@
     updateTabBadge(cat, items.length);
   }
 
-  /* ── CRYPTO TABLE ────────────────────── */
+  // ── CRYPTO (V4: quantity × livePrice) ──
   function renderCrypto() {
     var items = STATE.crypto || [];
     var tbody = document.getElementById('crypto-tbody');
     if (!tbody) return;
 
-    var totalCur = items.reduce(function (a, b) { return a + (parseFloat(b.current) || 0); }, 0);
-    var totalInv = items.reduce(function (a, b) { return a + (parseFloat(b.invested) || 0); }, 0);
+    var totalInv = items.reduce(function (a, p) {
+      var qty=parseFloat(p.quantity)||0, bp=parseFloat(p.buyPrice)||0;
+      return a + (qty>0&&bp>0 ? qty*bp : parseFloat(p.invested)||0);
+    }, 0);
+    var totalCur = items.reduce(function (a, p) { return a + getCryptoCurrentValue(p); }, 0);
     var totalGain = totalCur - totalInv;
 
     var banner = document.getElementById('crypto-tax-banner');
@@ -89,18 +125,28 @@
     }
 
     if (!items.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-tertiary)">Aucune crypto. Ajoutez votre première position.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-tertiary)">Aucune crypto. Ajoutez votre première position.</td></tr>';
       updateTabBadge('crypto', 0);
       return;
     }
+
     tbody.innerHTML = items.map(function (p) {
-      var inv = parseFloat(p.invested) || 0;
-      var cur = parseFloat(p.current)  || 0;
-      var pnl = cur - inv;
-      var pct = inv > 0 ? (pnl / inv * 100) : 0;
-      var mult = inv > 0 ? cur / inv : 1;
+      var qty    = parseFloat(p.quantity) || 0;
+      var bp     = parseFloat(p.buyPrice) || 0;
+      var ticker = (p.ticker || p.name || '').toUpperCase().split(' ')[0];
+      var live   = typeof getCurrentPrice==='function' ? getCurrentPrice(ticker) : 0;
+      var inv    = qty>0&&bp>0 ? qty*bp : parseFloat(p.invested)||0;
+      var cur    = qty>0&&live>0 ? qty*live : parseFloat(p.current)||0;
+      var pnl    = cur - inv;
+      var pct    = inv > 0 ? (pnl / inv * 100) : 0;
+      var mult   = inv > 0 ? cur / inv : 1;
+      var liveStr= live>1000 ? Math.round(live).toLocaleString('fr-FR')+'$' : live>0 ? live.toFixed(2)+'$' : '—';
       return '<tr>' +
-        '<td><strong>' + (p.name || '—') + '</strong></td>' +
+        '<td><strong>' + (p.name||p.ticker||'—') + '</strong>' +
+          (ticker ? '<br><small style="color:var(--amber)">' + ticker + '</small>' : '') +
+        '</td>' +
+        '<td class="td-mono">' + (qty>0 ? qty.toFixed(6) : '—') + '</td>' +
+        '<td class="td-mono" style="color:var(--amber)">' + liveStr + '</td>' +
         '<td class="td-mono">' + fmt(inv) + '</td>' +
         '<td class="td-mono">' + fmt(cur) + '</td>' +
         '<td class="td-mono ' + pnlClass(pnl) + '">' + pnlSign(pnl) + fmt(pnl) + '</td>' +
@@ -110,9 +156,10 @@
         '</tr>';
     }).join('');
     updateTabBadge('crypto', items.length);
+    checkBiasWarnings();
   }
 
-  /* ── IMMO CARDS ──────────────────────── */
+  // ── IMMO CARDS ────────────────────────
   function renderImmo() {
     var items = STATE.immo || [];
     var grid = document.getElementById('immo-grid');
@@ -132,10 +179,8 @@
       var gain = price - invested;
       return '<div class="immo-card">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
-          '<div>' +
-            '<div style="font-weight:600;font-size:15px">' + (p.name || 'Bien immobilier') + '</div>' +
-            '<div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">' + (p.address || '') + '</div>' +
-          '</div>' +
+          '<div><div style="font-weight:600;font-size:15px">' + (p.name || 'Bien immobilier') + '</div>' +
+          '<div style="font-size:12px;color:var(--text-tertiary);margin-top:2px">' + (p.address || '') + '</div></div>' +
           '<button class="btn btn-ghost btn-sm" onclick="requestDelete(\'immo\',\'' + p.id + '\',this)">Supprimer</button>' +
         '</div>' +
         '<div class="immo-metrics">' +
@@ -148,7 +193,7 @@
     updateTabBadge('immo', items.length);
   }
 
-  /* ── DCA LIST + CALENDAR ─────────────── */
+  // ── DCA ───────────────────────────────
   function renderDCA() {
     var items = STATE.dca || [];
     var list = document.getElementById('dca-list');
@@ -158,15 +203,13 @@
         list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-text">Aucun DCA programmé.</div></div>';
       } else {
         var total = items.reduce(function (a, b) { return a + (parseFloat(b.amount) || 0); }, 0);
-        list.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">Total mensuel : <strong style="color:var(--green);font-family:\'JetBrains Mono\',monospace">' + fmt(total) + '</strong></div>' +
+        list.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">Total mensuel : <strong style="color:var(--green)">' + fmt(total) + '</strong></div>' +
           items.map(function (p) {
             return '<div class="dca-item">' +
               '<div class="dca-item-left">' +
                 '<div class="dca-day">' + (p.day || 1) + '</div>' +
-                '<div class="dca-info">' +
-                  '<div class="dca-asset">' + (p.asset || '—') + '</div>' +
-                  '<div class="dca-meta"><span class="badge badge-' + (p.cat || 'pea').toLowerCase() + '">' + (p.cat || 'PEA') + '</span></div>' +
-                '</div>' +
+                '<div class="dca-info"><div class="dca-asset">' + (p.asset || '—') + '</div>' +
+                '<div class="dca-meta"><span class="badge badge-' + (p.cat || 'pea').toLowerCase() + '">' + (p.cat || 'PEA') + '</span></div></div>' +
               '</div>' +
               '<div style="display:flex;align-items:center;gap:12px">' +
                 '<div class="dca-amount">' + fmt(parseFloat(p.amount) || 0) + '</div>' +
@@ -176,7 +219,6 @@
           }).join('');
       }
     }
-    // Calendar view
     if (cal) {
       var dcaDays = {};
       items.forEach(function (p) { dcaDays[p.day] = (dcaDays[p.day] || 0) + (parseFloat(p.amount) || 0); });
@@ -185,8 +227,7 @@
         var hasDca = !!dcaDays[d];
         html += '<div class="cal-day' + (hasDca ? ' has-dca' : '') + '" title="' + (hasDca ? fmt(dcaDays[d]) : '') + '">' +
           '<div class="cal-day-num">' + d + '</div>' +
-          (hasDca ? '<div class="cal-day-dot"></div>' : '') +
-          '</div>';
+          (hasDca ? '<div class="cal-day-dot"></div>' : '') + '</div>';
       }
       cal.innerHTML = html;
     }
@@ -198,39 +239,104 @@
     if (badge) badge.textContent = count;
   }
 
-  /* ── ADD FORMS ───────────────────────── */
+  // ── ADD FORMS ─────────────────────────
+
+  // V4: PEA/CTO with ticker + shares + pricePerShare + buyDate
   window.addPos = function (cat) {
-    var n    = document.getElementById(cat + '-n');
-    var inv  = document.getElementById(cat + '-inv');
-    var cur  = document.getElementById(cat + '-cur');
-    if (!n) return;
-    var ok = true;
-    [n, inv, cur].forEach(function (el) {
-      if (el && !el.value.trim()) { el.classList.add('error'); ok = false; }
-      else if (el) el.classList.remove('error');
+    var tickerEl  = document.getElementById(cat + '-ticker');
+    var nameEl    = document.getElementById(cat + '-n');
+    var sharesEl  = document.getElementById(cat + '-shares');
+    var ppsEl     = document.getElementById(cat + '-pps');
+    var invEl     = document.getElementById(cat + '-inv');
+    var curEl     = document.getElementById(cat + '-cur');
+    var dateEl    = document.getElementById(cat + '-buydate');
+
+    var obj = {};
+
+    if (tickerEl && sharesEl) {
+      // V4 quantity mode
+      var tickerVal = tickerEl.value.trim().toUpperCase();
+      var sharesVal = parseFloat(sharesEl.value) || 0;
+      var ppsVal    = parseFloat(ppsEl ? ppsEl.value : 0) || 0;
+      if (!tickerVal || !sharesVal) {
+        if (tickerEl) tickerEl.classList.add('error');
+        if (sharesEl) sharesEl.classList.add('error');
+        return;
+      }
+      [tickerEl, sharesEl, ppsEl].forEach(function(el){ if(el) el.classList.remove('error'); });
+      var liveP = typeof getCurrentPrice==='function' ? getCurrentPrice(tickerVal) : ppsVal;
+      obj = {
+        ticker:        tickerVal,
+        name:          tickerVal,
+        shares:        sharesVal,
+        pricePerShare: ppsVal,
+        invested:      sharesVal * ppsVal,
+        current:       sharesVal * (liveP || ppsVal),
+        buyDate:       dateEl ? dateEl.value : new Date().toISOString().slice(0,10)
+      };
+    } else {
+      if (!nameEl || !nameEl.value.trim()) { if(nameEl) nameEl.classList.add('error'); return; }
+      nameEl.classList.remove('error');
+      obj = {
+        name:     nameEl.value.trim(),
+        invested: parseFloat(invEl ? invEl.value : 0) || 0,
+        current:  parseFloat(curEl ? curEl.value : 0) || 0
+      };
+    }
+
+    addPosition(cat, obj);
+    [tickerEl, nameEl, sharesEl, ppsEl, invEl, curEl, dateEl].forEach(function(el){
+      if (el) { el.value = ''; el.classList.remove('error'); }
     });
-    if (!ok) return;
-    addPosition(cat, {
-      name:     n.value.trim(),
-      invested: parseFloat(inv ? inv.value : 0) || 0,
-      current:  parseFloat(cur ? cur.value : 0) || 0
-    });
-    [n, inv, cur].forEach(function (el) { if (el) { el.value = ''; el.classList.remove('error'); } });
     renderAllPortfolioTabs();
     if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderIncome === 'function') renderIncome();
     if (typeof showToast === 'function') showToast('Position ajoutée !', 'success');
+  };
+
+  // V4 Crypto: ticker + quantity + buyPrice + buyDate
+  window.addCrypto = function () {
+    var tickerEl = document.getElementById('crypto-ticker');
+    var qtyEl    = document.getElementById('crypto-qty');
+    var bpEl     = document.getElementById('crypto-bp');
+    var dateEl   = document.getElementById('crypto-buydate');
+
+    var tickerVal = tickerEl ? tickerEl.value.trim().toUpperCase() : '';
+    var qtyVal    = parseFloat(qtyEl ? qtyEl.value : 0) || 0;
+    var bpVal     = parseFloat(bpEl  ? bpEl.value  : 0) || 0;
+
+    if (!tickerVal || !qtyVal) {
+      if (tickerEl) tickerEl.classList.add('error');
+      if (qtyEl)    qtyEl.classList.add('error');
+      return;
+    }
+    [tickerEl, qtyEl, bpEl, dateEl].forEach(function(el){ if(el) el.classList.remove('error'); });
+
+    var livePrice = typeof getCurrentPrice==='function' ? getCurrentPrice(tickerVal) : 0;
+    addPosition('crypto', {
+      ticker:   tickerVal,
+      name:     tickerVal,
+      quantity: qtyVal,
+      buyPrice: bpVal,
+      buyDate:  dateEl ? dateEl.value : new Date().toISOString().slice(0,10),
+      invested: qtyVal * bpVal,
+      current:  qtyVal * (livePrice || bpVal)
+    });
+    [tickerEl, qtyEl, bpEl, dateEl].forEach(function(el){ if(el){ el.value=''; el.classList.remove('error'); } });
+    renderAllPortfolioTabs();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof showToast === 'function') showToast('Crypto ajoutée !', 'success');
   };
 
   window.addImmo = function () {
     var fields = { name: 'immo-name', price: 'immo-price', invested: 'immo-inv', loyer: 'immo-loyer', charges: 'immo-charges', address: 'immo-addr' };
     var vals = {};
-    var required = ['immo-name', 'immo-price'];
     var ok = true;
     Object.keys(fields).forEach(function (k) {
       var el = document.getElementById(fields[k]);
       if (el) {
         vals[k] = el.value.trim();
-        if (required.indexOf(fields[k]) !== -1 && !vals[k]) { el.classList.add('error'); ok = false; }
+        if ((fields[k]==='immo-name'||fields[k]==='immo-price') && !vals[k]) { el.classList.add('error'); ok = false; }
         else if (el) el.classList.remove('error');
       }
     });
@@ -242,9 +348,12 @@
       loyer: parseFloat(vals.loyer) || 0,
       charges: parseFloat(vals.charges) || 0
     });
-    Object.values(fields).forEach(function (id) { var el = document.getElementById(id); if (el) { el.value = ''; el.classList.remove('error'); } });
+    Object.values(fields).forEach(function (id) {
+      var el = document.getElementById(id); if (el) { el.value = ''; el.classList.remove('error'); }
+    });
     renderAllPortfolioTabs();
     if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderIncome === 'function') renderIncome();
     if (typeof showToast === 'function') showToast('Bien ajouté !', 'success');
   };
 
@@ -270,7 +379,6 @@
     if (typeof showToast === 'function') showToast('DCA ajouté !', 'success');
   };
 
-  /* ── RENDER ALL ──────────────────────── */
   window.renderPEA    = function () { renderStockTable('pea'); };
   window.renderCTO    = function () { renderStockTable('cto'); };
   window.renderCrypto = renderCrypto;
@@ -283,5 +391,28 @@
     renderCrypto();
     renderImmo();
     renderDCA();
+    if (typeof renderDefi === 'function') renderDefi();
+    if (typeof renderJournal === 'function') renderJournal();
   };
+
+  // Refresh live prices every 60s
+  setInterval(function () {
+    if (document.getElementById('page-portfolio') &&
+        document.getElementById('page-portfolio').classList.contains('active')) {
+      renderCrypto();
+      renderStockTable('pea');
+      renderStockTable('cto');
+    }
+    if (typeof renderDashboard === 'function') renderDashboard();
+  }, 60000);
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var headers = document.querySelectorAll('#all-table thead th[data-sort]');
+    if (!headers.length) return;
+    headers.forEach(function (th) {
+      th.addEventListener('click', function () {
+        // handled by dashboard.js
+      });
+    });
+  });
 })();
