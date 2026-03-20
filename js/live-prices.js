@@ -50,12 +50,19 @@
     if (el) el.textContent = 'Mis à jour il y a ' + Math.round((Date.now() - lastFetch) / 1000) + 's';
   }
 
+  function getCoinGeckoToken() {
+    try { return localStorage.getItem('wealth_tokens_coingecko') || ''; } catch (e) { return ''; }
+  }
+
   function fetchLive() {
     var now = Date.now();
     if (now - lastFetch < FETCH_INTERVAL) return;
     lastFetch = now;
     var ids = 'bitcoin,ethereum,solana,binancecoin,avalanche-2';
-    fetch('https://api.coingecko.com/api/v3/simple/price?ids=' + ids + '&vs_currencies=usd')
+    var token = getCoinGeckoToken();
+    var url = 'https://api.coingecko.com/api/v3/simple/price?ids=' + ids + '&vs_currencies=usd';
+    if (token) url += '&x_cg_demo_api_key=' + encodeURIComponent(token);
+    fetch(url)
       .then(function (r) { return r.json(); })
       .then(function (data) {
         var map = { bitcoin: 'BTC', ethereum: 'ETH', solana: 'SOL', binancecoin: 'BNB', 'avalanche-2': 'AVAX' };

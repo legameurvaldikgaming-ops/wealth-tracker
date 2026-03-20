@@ -215,6 +215,74 @@
     saveV4State();
   };
 
+  /* ── API TOKENS ──────────────────────── */
+  var TOKEN_KEY_COINGECKO = 'wealth_tokens_coingecko';
+
+  function loadApiTokensToUI() {
+    var cgInput = document.getElementById('settings-coingecko-token');
+    if (!cgInput) return;
+    var stored = '';
+    try { stored = localStorage.getItem(TOKEN_KEY_COINGECKO) || ''; } catch (e) {}
+    cgInput.value = stored;
+    updateCoinGeckoTokenStatus(stored);
+  }
+
+  function updateCoinGeckoTokenStatus(token) {
+    var el = document.getElementById('coingecko-token-status');
+    if (!el) return;
+    if (token) {
+      el.textContent = '✓ Clé API configurée (' + token.slice(0, 6) + '••••)';
+      el.style.color = 'var(--accent-green)';
+    } else {
+      el.textContent = 'Aucune clé configurée — utilisation de l\'API publique';
+      el.style.color = 'var(--text-tertiary)';
+    }
+  }
+
+  window.saveApiTokens = function () {
+    var cgInput = document.getElementById('settings-coingecko-token');
+    if (!cgInput) return;
+    var token = cgInput.value.trim();
+    try {
+      if (token) { localStorage.setItem(TOKEN_KEY_COINGECKO, token); }
+      else { localStorage.removeItem(TOKEN_KEY_COINGECKO); }
+    } catch (e) {}
+    updateCoinGeckoTokenStatus(token);
+    var msg = document.getElementById('token-save-msg');
+    if (msg) {
+      msg.style.display = 'inline';
+      setTimeout(function () { msg.style.display = 'none'; }, 2500);
+    }
+    showToast('Tokens API sauvegardés', 'success');
+  };
+
+  window.clearApiTokens = function () {
+    try { localStorage.removeItem(TOKEN_KEY_COINGECKO); } catch (e) {}
+    var cgInput = document.getElementById('settings-coingecko-token');
+    if (cgInput) cgInput.value = '';
+    updateCoinGeckoTokenStatus('');
+    showToast('Tokens effacés', 'info');
+  };
+
+  window.toggleTokenVisibility = function (inputId, btn) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = '🙈';
+    } else {
+      input.type = 'password';
+      btn.textContent = '👁';
+    }
+  };
+
+  // Load token values into settings UI when settings page is shown
+  var origShowPage = window.showPage;
+  window.showPage = function (name) {
+    origShowPage(name);
+    if (name === 'settings') loadApiTokensToUI();
+  };
+
   /* ── THEME PANEL ─────────────────────── */
   window.toggleThemePanel = function () {
     var panel = document.getElementById('theme-panel');

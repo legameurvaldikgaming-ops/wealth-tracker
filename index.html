@@ -1162,10 +1162,31 @@
       </div>
 
       <!-- Stealth Mode -->
-      <div class="card">
+      <div class="card" style="margin-bottom:20px">
         <div class="section-title" style="font-size:16px;margin-bottom:12px">🙈 Mode Stealth</div>
         <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Masque tous les montants avec •••••. Raccourci clavier : <code>Ctrl+Shift+H</code></p>
         <button class="btn btn-primary" onclick="toggleStealth()">Basculer le mode Stealth</button>
+      </div>
+
+      <!-- API Tokens -->
+      <div class="card">
+        <div class="section-title" style="font-size:16px;margin-bottom:8px">🔑 Tokens API</div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Configure tes clés API pour des données en temps réel. Les tokens sont stockés localement dans ton navigateur.</p>
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>CoinGecko API Key <span style="font-size:11px;color:var(--text-tertiary)">(optionnel — améliore les limites de taux)</span></label>
+            <div style="display:flex;gap:8px">
+              <input id="settings-coingecko-token" type="password" placeholder="CG-xxxxxxxxxxxxxxxxxxxx" style="flex:1">
+              <button class="btn btn-ghost" onclick="toggleTokenVisibility('settings-coingecko-token', this)" style="padding:0 12px;min-width:40px">👁</button>
+            </div>
+            <div id="coingecko-token-status" style="font-size:12px;margin-top:6px;color:var(--text-tertiary)">Aucune clé configurée — utilisation de l'API publique</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px;align-items:center">
+          <button class="btn btn-primary" onclick="saveApiTokens()">💾 Sauvegarder les tokens</button>
+          <button class="btn btn-ghost" onclick="clearApiTokens()">🗑 Effacer</button>
+          <span id="token-save-msg" style="font-size:13px;color:var(--accent-green);display:none">✓ Tokens sauvegardés</span>
+        </div>
       </div>
     </div>
   </div><!-- /settings -->
